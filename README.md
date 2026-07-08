@@ -2,7 +2,7 @@
 
 *An answer it cannot cite is an answer it must not give.*
 
-[![CI](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/test.yml/badge.svg)](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/test.yml)
+[![CI](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/ci.yml)
 [![Eval](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/evals.yml/badge.svg)](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/evals.yml)
 
 **Status:** `v1.0.0 — deployed and live`  
