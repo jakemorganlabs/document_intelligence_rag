@@ -31,10 +31,10 @@ function post(
 
 describe("server auth (S05)", () => {
   const secret = "server-test-secret";
-  const OLD_SECRET = process.env.QUERY_SECRET;
+  const OLD_SECRET = process.env.HMAC_SECRET;
 
-  it("returns 401 when QUERY_SECRET is set but headers are missing", async () => {
-    process.env.QUERY_SECRET = secret;
+  it("returns 401 when HMAC_SECRET is set but headers are missing", async () => {
+    process.env.HMAC_SECRET = secret;
     const server = buildServer();
     await new Promise<void>((r) => server.listen(0, r));
 
@@ -44,11 +44,11 @@ describe("server auth (S05)", () => {
 
     server.closeAllConnections?.();
     server.close();
-    process.env.QUERY_SECRET = OLD_SECRET;
+    process.env.HMAC_SECRET = OLD_SECRET;
   });
 
   it("returns 401 when signature is invalid", async () => {
-    process.env.QUERY_SECRET = secret;
+    process.env.HMAC_SECRET = secret;
     const server = buildServer();
     await new Promise<void>((r) => server.listen(0, r));
 
@@ -65,11 +65,11 @@ describe("server auth (S05)", () => {
 
     server.closeAllConnections?.();
     server.close();
-    process.env.QUERY_SECRET = OLD_SECRET;
+    process.env.HMAC_SECRET = OLD_SECRET;
   });
 
   it("returns 401 when timestamp is expired", async () => {
-    process.env.QUERY_SECRET = secret;
+    process.env.HMAC_SECRET = secret;
     const server = buildServer();
     await new Promise<void>((r) => server.listen(0, r));
 
@@ -86,11 +86,11 @@ describe("server auth (S05)", () => {
 
     server.closeAllConnections?.();
     server.close();
-    process.env.QUERY_SECRET = OLD_SECRET;
+    process.env.HMAC_SECRET = OLD_SECRET;
   });
 
   it("returns 400 for a validly-signed but invalid JSON body", async () => {
-    process.env.QUERY_SECRET = secret;
+    process.env.HMAC_SECRET = secret;
     const server = buildServer();
     await new Promise<void>((r) => server.listen(0, r));
 
@@ -106,6 +106,34 @@ describe("server auth (S05)", () => {
 
     server.closeAllConnections?.();
     server.close();
-    process.env.QUERY_SECRET = OLD_SECRET;
+    process.env.HMAC_SECRET = OLD_SECRET;
+  });
+
+  it("returns 200 or 503 on GET /health without auth", async () => {
+    process.env.HMAC_SECRET = secret;
+    const server = buildServer();
+    await new Promise<void>((r) => server.listen(0, r));
+
+    const addr = server.address() as { port: number };
+    const res = await new Promise<{ status: number; body: unknown }>((resolve) => {
+      http.request(
+        { hostname: "localhost", port: addr.port, method: "GET", path: "/health" },
+        (response) => {
+          let data = "";
+          response.on("data", (chunk) => { data += chunk; });
+          response.on("end", () => {
+            resolve({ status: response.statusCode ?? 0, body: data ? JSON.parse(data) : null });
+          });
+        }
+      ).on("error", (err) => resolve({ status: 0, body: { error: err.message } })).end();
+    });
+
+    // 200 if DB available, 503 if DB not available — either is acceptable
+    // because it proves the endpoint exists and does not require auth
+    expect(res.status === 200 || res.status === 503).toBe(true);
+
+    server.closeAllConnections?.();
+    server.close();
+    process.env.HMAC_SECRET = OLD_SECRET;
   });
 });

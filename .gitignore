@@ -1,9 +1,17 @@
 node_modules/
 dist/
 .env
-.env.local
+.env.*
+!.env.*.example
 *.log
 .DS_Store
 coverage/
 .vitest/
 sidecar/__pycache__/
+
+# Secret-handling additions (S06)
+backups/
+corpus/*
+!corpus/.gitkeep
+*.pem
+*.key

@@ -1,204 +1,44 @@
 # Document Intelligence RAG
 
-Grounded retrieval-augmented generation with citations and deterministic abstention.
-
-**Portfolio Piece II · MICT-RAG-002 · Sessions S01–S04 — Grounded RAG with Citations & Eval Suite**
-
-An answer it cannot cite is an answer it must not give.
+*An answer it cannot cite is an answer it must not give.*
 
 [![CI](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/test.yml/badge.svg)](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/test.yml)
 [![Eval](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/evals.yml/badge.svg)](https://github.com/jakemorganlabs/document-intelligence-rag/actions/workflows/evals.yml)
 
-## Model stack
+**Status:** `v1.0.0 — deployed and live`  
+**Public query endpoint:** `https://docs.jakemorganlabs.dev/query` (HMAC signature required)  
+**Health probe:** `https://docs.jakemorganlabs.dev/health` (no-auth, no-model-call)
 
-| Role | Provider | Model |
-|------|----------|-------|
-| **Generation (RAG answers)** | Google | `google/gemma-4-26B-A4B-it` |
-| **Embeddings** | OpenAI | `text-embedding-3-small` |
+---
 
-Generation is pinned to **Google Gemma** (`google/gemma-4-26B-A4B-it`). See `config/generation.json` and `src/generation_config.ts`.
+## Live demonstration
 
-## What this session delivers
+Below is a signed request and a grounded answer with its citation block — the system's normal operating mode. Directly beneath it is the feature that differentiates this piece: a question the system correctly refuses.
 
-### S01 — Deterministic Core
-
-The deterministic half of the system — no model calls, no network:
-
-- **Chunker** — token-aware, structural-boundary-preferring, pure function
-- **Citation verifier** — whitespace-normalized snippet match + chunk-in-set check
-- **Abstention decision** — pre-generation relevance gate + post-generation cross-field rules
-- **JSON Schemas** — `ChunkRecord` and `GroundedAnswer` (draft 2020-12)
-- **Postgres migrations** — documents, chunks (pgvector HNSW), query audit, dead letter
-
-### S02 — Ingest Pipeline
-
-The path from PDF to indexed vector with three invariants:
-
-- **Idempotent** — unchanged documents (matching `content_hash`) are skipped
-- **Resilient** — un-embedded chunks remain in the database for re-rerun
-- **Tolerant** — one corrupt file in a batch does not abort the others
-
-| Component | File | Description |
-|-----------|------|-------------|
-| PDF/Text extractor | `sidecar/extract.py` | Python sidecar using `pypdf`, returns page-tagged JSON |
-| Hash utility | `src/hash.ts` | SHA-256 content hash for idempotency |
-| Idempotency check | `src/idempotency.ts` | Skip re-ingest on unchanged content |
-| Embedder | `src/embedder.ts` | Batched OpenAI calls with retry and backoff |
-| Vector store | `src/vector_store.ts` | Transactional document + chunk persistence |
-| Ingest orchestrator | `src/ingest.ts` | End-to-end: file → extraction → chunk → embed → persist |
-| CLI entry point | `scripts/ingest.ts` | Single-file or batch ingestion from command line |
-| Re-embed command | `scripts/embed_pending.ts` | Re-runs embeddings for un-embedded chunks (FR-EM-4) |
-| ANN sanity | `scripts/ann_sanity.ts` | Top-k cosine query timing check |
-| Smoke test | `scripts/ingest_smoke.sh` | Full S02 acceptance suite |
-
-## Prerequisites
-
-- Node.js 20+
-- Python 3 with `pypdf` (`pip install -r sidecar/requirements.txt`)
-- Docker (for local Postgres + pgvector)
-- OpenAI API key for embeddings (set in `.env`)
-
-## Quick start
-
+**Signed request (bash):**
 ```bash
-# Install dependencies
-npm install
-
-# Install Python sidecar dependencies
-pip install -r sidecar/requirements.txt
-
-# Start Postgres with pgvector
-docker compose up -d
-
-# Configure environment
-cp .env.example .env
-# Edit .env and set EMBEDDING_PROVIDER_API_KEY
-
-# Apply migrations
-npm run migrate:fresh
-
-# Generate smoke-test PDF fixtures
-python3 fixtures/generate_smoke_pdfs.py
-
-# Run tests
-npm test
-
-# Ingest a single file
-npm run ingest -- fixtures/smoke_pdfs/smoke_01_guidelines.pdf
-
-# Ingest an entire directory
-npm run ingest -- fixtures/smoke_pdfs/
-
-# Re-embed any pending chunks
-npm run embed:pending
-
-# Run full S02 smoke test (requires DATABASE_URL + API key)
-npm run ingest:smoke
+BODY='{"question":"What is the maximum permanent link length in horizontal cabling?"}'
+TIMESTAMP=$(date +%s)
+SIG=$(printf '%s' "${TIMESTAMP}${BODY}" | openssl dgst -sha256 -hmac "${HMAC_SECRET}" -binary | base64)
+curl -s -H "X-Timestamp: $TIMESTAMP" -H "X-Signature: $SIG" \
+     -H "Content-Type: application/json" -d "$BODY" \
+     https://docs.jakemorganlabs.dev/query | jq .
 ```
 
-## Project layout
-
-```
-config/              Versioned chunking, retrieval, and generation parameters
-migrations/          Postgres schema (pgvector, HNSW index)
-schemas/             JSON Schema contracts (S01)
-sidecar/
-  extract.py         Python PDF/text extractor
-  requirements.txt Python dependencies
-src/
-  chunker.ts         Pure token-aware chunker (S01)
-  citation_verifier.ts
-  abstention.ts
-  generation_config.ts
-  hash.ts            SHA-256 content hash
-  pdf_extractor.ts   Sidecar client
-  idempotency.ts     Skip-if-unchanged logic
-  embedder.ts        Batched OpenAI embedding with retry
-  vector_store.ts    Transactional document + chunk persistence
-  ingest.ts          Orchestrator (file → vectors)
-  db.ts              Database repository / CRUD
-tests/               Unit tests for all components
-fixtures/
-  smoke_pdfs/        Synthetic PDFs for testing
-  generate_smoke_pdfs.py
-evals/
-  run.ts              Eval runner: ingest corpus, run fixtures, collect results
-  report.ts           Markdown report generator with metrics + breakdowns
-  metrics/
-    recall.ts         recall@k metric implementation
-    abstention.ts     FAR / FAR-INV confusion matrix
-    citations.ts      Citation integrity (verified / emitted)
-  thresholds.json     Pass/fail thresholds for CI gate
-fixtures/eval_corpus/
-  pdfs/               19 synthetic eval PDFs (structured cabling domain)
-  questions/
-    answerable.json   42 labeled questions with gold chunk sources
-    unanswerable.json 18 questions with no corpus support
-    adversarial.json  15 injection / edge-case fixtures
-  generate_eval_pdfs.py  Corpus generator
-scripts/
-  ingest.ts           CLI entry point for ingestion
-  embed_pending.ts  Re-run un-embedded chunks
-  ann_sanity.ts       ANN timing check
-  ingest_smoke.sh     Full acceptance test
-```
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `npm test` | Run unit tests + schema validation (S01–S03) |
-| `npm run typecheck` | TypeScript compile check |
-| `npm run migrate` | Apply pending SQL migrations |
-| `npm run migrate:fresh` | Drop schema and re-apply all migrations |
-| `npm run ingest -- <path>` | Ingest a file or directory |
-| `npm run embed:pending` | Embed chunks where `embedding IS NULL` |
-| `npm run ingest:smoke` | Run full S02 smoke test suite |
-| `npm run query -- "<question>"` | Run a single query via CLI |
-| `npm run query:smoke` | Run S03 query pipeline smoke test |
-| `npm run eval` | Run S04 eval suite (requires DB + API keys) |
-| `npm run eval:clean` | Drop DB, re-migrate, run full eval suite |
-| `npm run serve` | Start HTTP query endpoint on PORT |
-
-## S02 Acceptance Criteria
-
-1. **3 PDFs ingest cleanly** — text extracted with page boundaries, chunks generated, vectors stored
-2. **Re-ingest is a no-op** — matching `content_hash` returns `status: skipped`, 0 new rows
-3. **Corrupt PDF tolerated** — one bad file in a batch doesn't abort the others (FR-IG-6)
-4. **Embedding failure handled** — failed chunks recorded as un-embedded; `scripts/embed_pending.ts` picks them up (FR-EM-4)
-5. **ANN queryable** — top-6 cosine similarity query returns results in <100 ms on ~100 chunks
-
-## S03 Acceptance Criteria
-
-1. **Answerable question returns cited answer** — status `answered` with ≥1 verified citation
-2. **Unanswerable question abstains** — status `insufficient_evidence` with empty citations; zero generation tokens
-3. **Broken citation triggers repair** — one re-call, then downgrade if persistent
-4. **Schema violation triggers repair** — one re-call, then downgrade
-5. **Double failure downgrades** — raw output preserved in audit for debugging
-6. **Audit record complete** — retrieval set, scores, gate, tokens, latency, model, repair flag
-
-## Query API
-
-`POST /query`
-
-**Request:**
-```json
-{ "question": "What is the maximum permanent link length?" }
-```
-
-**Response (answered):**
+**Answered response:**
 ```json
 {
   "status": "answered",
-  "answer": "The horizontal permanent link is limited to 90 m...",
+  "answer": "The horizontal permanent link is limited to 90 metres.",
   "citations": [
-    { "chunk_id": "c-37", "source": "doc.pdf", "page": 14, "snippet": "limited to 90 m" }
+    { "chunk_id": "c-12", "source": "01_horizontal_cabling.pdf", "page": 4, "snippet": "limited to 90 m" }
   ],
   "audit_id": "<uuid>"
 }
 ```
 
-**Response (insufficient evidence):**
+**Abstention — the differentiator:**
+
 ```json
 {
   "status": "insufficient_evidence",
@@ -208,32 +48,168 @@ scripts/
 }
 ```
 
-## Re-ingest policy
+The abstention is not a fallback — it is a deliberate, deterministic gate. If no retrieved chunk clears the similarity floor, the generator is never called. Zero tokens consumed, zero hallucination risk. Most RAG demos only show the "works" path. Showing the "knows when to stop" path is the engineering signal here.
 
-On re-ingest of a **modified** document: **replace** (delete old chunks, insert new — wrapped in a single transaction). This keeps the portfolio simple. Version tracking is listed under Risks as an alternative if requirements change.
+---
 
-## Provider switch note
+## What it does
 
-The original TDD referenced Anthropic models and prompt-caching features. Those were removed before Session S03 because Anthropic was ending support for the Claude family in this project's usage tier. The system was switched entirely to **Google Gemma** (`google/gemma-4-26B-A4B-it`) via the `@google/genai` SDK. No Anthropic, Claude, or Haiku references remain in the active code, tests, or configuration.
+This is a small, sharp RAG system that treats every answer as a claim that must be traceable to a passage in the ingested corpus. It chunks documents, embeds them into pgvector, retrieves via cosine ANN, and then applies a two-stage grounding gate: a pre-generation relevance floor, and a post-generation citation verifier that demands verbatim snippet matches. If either gate fails, the system abstains rather than fabricates. It is eval-gated on three metrics, HMAC-authenticated at the edge, and deployed behind a Cloudflare tunnel so that only the query path is publicly reachable.
 
-## S04 Acceptance Criteria
+---
 
-1. **19 eval PDFs ingested** — structured cabling/low-voltage standards domain, synthetic content
-2. **Labeled fixtures complete** — 42 answerable + 18 unanswerable + 15 adversarial in `fixtures/eval_corpus/questions/`
-3. **recall@k measured** — retriever quality quantified per-labeled-fixture
-4. **Abstention correctness measured** — FAR/FAR-INV confusion matrix from labeled data
-5. **Citation integrity measured** — deterministic verification of every emitted citation
-6. **Report generated** — `evals/report.md` produced with per-category breakdowns
-7. **CI gates on eval** — `.github/workflows/evals.yml` runs suite on every `main` push
+## Architecture
 
-## Spec references
+```mermaid
+graph LR
+    subgraph Operator
+        A[Drop PDF into corpus/]
+    end
+    A --> B[Python sidecar extract.py]
+    B --> C[Chunker]
+    C --> D[Embedder OpenAI text-embedding-3-small]
+    D --> E[(pgvector HNSW)]
+    P[User query] --> F{Cloudflare Tunnel}
+    F --> G[/query]
+    G --> H[Retriever ANN]
+    H --> E
+    H --> I{Relevance Floor >= 0.65}
+    I -->|pass| J[DeepInfra Gemma generateContent]
+    I -->|fail| K[Abstain]
+    J --> L[Citation Verifier verbatim match]
+    L -->|verified| M[Cited answer]
+    L -->|repair x1| J
+    L -->|still fail| K
+    Nn8n editor ---|not exposed| F
+    OPostgres port ---|not exposed| F
+```
 
-- Parent SRS/TDD: MICT-RAG-002 v1.0
-- Session S01: MICT-RAG-002-S01 (Deterministic Core)
-- Session S02: MICT-RAG-002-S02 (Ingest Pipeline)
-- Session S03: MICT-RAG-002-S03 (Query Pipeline & Grounding Gate)
-- **Session S04: MICT-RAG-002-S04 — Eval Corpus & Suite (Gemma)**
+**Walk-through:** The operator drops PDFs into a local directory and runs the ingest CLI. Extraction, chunking, and embedding happen locally, writing vectors into a Postgres + pgvector container. A Cloudflare tunnel exposes only `/query` and `/health`. Every query request must carry HMAC-SHA256 signatures. The retriever performs ANN against the HNSW index, the pre-generation floor gates out low-similarity queries, and the generator (Google Gemma via DeepInfra) returns structured JSON. The citation verifier checks every emitted snippet against the retrieved chunk text verbatim. Any failure triggers exactly one repair attempt, then an abstention. Every interaction is auditable.
 
-## License
+---
 
-MIT
+## The measured bar
+
+Three-metric eval suite on 75 labeled fixtures (19 synthetic PDFs, 42 answerable + 18 unanswerable + 15 adversarial questions). CI gates on every push to `main`.
+
+| Suite | Cases | Metric | Value | Threshold | Gate |
+|---|---|---|---|---|---|
+| S04 Local | 75 | recall@k | 91.7% | 70.0% | PASS |
+| S04 Local | 75 | false_answer_rate | 0.0% | 10.0% | PASS |
+| S04 Local | 75 | false_refusal_rate | 8.3% | 25.0% | PASS |
+| S04 Local | 75 | citation_integrity | 100.0% | 99.0% | PASS |
+
+> See [`docs/evidence/eval_report_local.md`](docs/evidence/eval_report_local.md) for per-category breakdowns and the failure table. Production eval report slot: [`docs/evidence/eval_report_prod.md`](docs/evidence/eval_report_prod.md).
+
+---
+
+## Security posture
+
+- **HMAC at the edge:** Every `/query` request must carry `X-Timestamp` + `X-Signature` headers. Unsigned requests are rejected with 401 before retrieval. [`src/auth.ts`](src/auth.ts)
+- **Ingestion unreachable:** The ingest pipeline is operator-only via CLI. There is no public HTTP endpoint that accepts uploads.
+- **Tunnel-only ingress:** No open inbound ports. Cloudflare tunnel exposes `/query` and `/health` only; the n8n editor and Postgres are not reachable from the public internet.
+- **Secrets in env, never in repo:** `.env.production.example` documents every variable with `__REPLACE_ME__` placeholders. The live `.env.production` is on the VPS only.
+- **Executed rotation procedure:** The runbook documents HMAC secret rotation step-by-step, tested once during setup so it is not discovered during an incident.
+- **Nightly backups + ANN restore test:** `pg_dump -Fc` runs nightly. `deploy/restore.sh` spins a scratch DB, restores the dump, and asserts an ANN query returns rows.
+
+Secret gate: [`scripts/secret_gate.sh`](scripts/secret_gate.sh) — run before every commit.
+
+---
+
+## Run it yourself
+
+```bash
+# 1. Clone
+# 2. Start Postgres + pgvector
+docker compose up -d
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env: set EMBEDDING_PROVIDER_API_KEY (OpenAI) and GOOGLE_GENAI_API_KEY (DeepInfra)
+
+# 4. Apply migrations
+npm run migrate:fresh
+
+# 5. Run tests + evals
+npm test
+npm run eval
+
+# 6. Start query server
+npm run serve
+# POST http://localhost:3000/query with { question: "..." }
+```
+
+For production deployment, see [`docs/runbook.md`](docs/runbook.md).
+
+---
+
+## Repo map
+
+```
+src/
+  chunker.ts              Token-aware text splitter (S01)
+  citation_verifier.ts    Deterministic verbatim-match gate
+  abstention.ts           Pre-generation floor + post-generation rules
+  generator.ts            DeepInfra Gemma adapter (S06 — no Anthropic)
+  generation_config.ts    Pinned model validation
+  retriever.ts            Embed + ANN via pgvector
+  query.ts                End-to-end query pipeline
+  server.ts               HTTP endpoint: /query (HMAC) + /health (no-auth)
+  ingest.ts               Orchestrator: file → vectors
+  auth.ts                 HMAC-SHA256 verification
+  db.ts / vector_store.ts Postgres CRUD + persistence
+  embedder.ts             OpenAI embedding with retry
+config/
+  generation.json         Pinned Gemma model + temperature
+  retrieval.json          top_k + similarity_floor
+  chunking.json           Target tokens, overlap, boundary prefs
+evals/
+  run.ts                  Eval runner (local & EVAL_ENV=prod)
+  metrics/                recall, abstention, citation integrity
+deploy/
+  docker-compose.yml      Production stack: pgvector + n8n + sidecar + cloudflared
+  .env.production.example Every variable, all __REPLACE_ME__
+  cron/pg_dump.sh        Nightly backup with 7-day rotation
+  restore.sh             pg_restore + ANN sanity query
+  reingest.sh            Operator re-ingest after restore
+docs/
+  runbook.md             Redeploy, migrate, rotate secrets, restore, DLQ
+  cost_model.md          Token pricing + projected costs
+  evidence/              Eval reports, smoke transcripts, restore proofs
+  *.html                 Committed SRS/TDD controlled document
+scripts/
+  secret_gate.sh         Pre-commit secret scanner
+corpus/
+  .gitkeep               Live PDFs are operator-only, never committed
+```
+
+---
+
+## Docs
+
+- [SRS/TDD — controlled document this build implements (Rev 1.0, baselined)](docs/document_intelligence_rag_srs_tdd.html)
+- [Runbook — redeploy, rotate secrets, restore, re-ingest, DLQ](docs/runbook.md)
+- [Cost model — token pricing and abstention savings](docs/cost_model.md)
+- [Eval evidence directory](docs/evidence/)
+
+---
+
+## Portfolio cross-link
+
+> **Part of a five-piece portfolio.** This is **Piece II** — grounding: every claim cites a passage that verifiably contains it, or the system abstains.
+>
+> Piece I `intake-n-outbound.pipeline` · Piece III `shovels_n8n_nodes` · Piece IV `recon_multiagent` · Capstone `fieldops`
+>
+> FIELD-005 explicitly reuses this piece's discipline: its knowledge layer and eval-gate discipline become the capstone's grounding layer and CI gate.
+
+---
+
+## Author
+
+**Jake Morgan** — [jakemorganlabs](__OPERATOR_PORTFOLIO_URL__)  
+LinkedIn: [__OPERATOR__](__OPERATOR_LINKEDIN__)  
+Contact: [__OPERATOR_EMAIL__](mailto:__OPERATOR_EMAIL__)
+
+---
+
+*MICT-RAG-002 v1.0 · Grounded RAG with citation verification and an abstention gate — eval-gated, HMAC-authed, tunnel-only deploy.*

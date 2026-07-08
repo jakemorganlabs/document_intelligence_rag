@@ -7,8 +7,8 @@ import {
 } from "../src/generation_config.js";
 
 describe("generation_config", () => {
-  it("pins the generation model to Google Gemma", () => {
-    expect(defaultGenerationConfig.provider).toBe("google");
+  it("pins the generation model to Google Gemma via DeepInfra", () => {
+    expect(defaultGenerationConfig.provider).toBe("deepinfra");
     expect(defaultGenerationConfig.model_id).toBe(
       "google/gemma-4-26B-A4B-it"
     );
@@ -24,13 +24,13 @@ describe("generation_config", () => {
     expect(matched).toBe(true);
   });
 
-  it("rejects non-google provider overrides", () => {
+  it("rejects non-deepinfra provider overrides", () => {
     expect(() =>
       loadGenerationConfig({
-        provider: "openai" as "google",
+        provider: "openai" as "deepinfra",
         model_id: "gpt-4",
       })
-    ).toThrow(/provider must be "google"/);
+    ).toThrow(/provider must be "deepinfra"/);
   });
 
   it("rejects non-gemma model overrides", () => {

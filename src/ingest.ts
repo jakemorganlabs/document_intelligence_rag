@@ -1,6 +1,10 @@
 /**
  * Ingest orchestrator — file → extraction → chunking → embedding → persistence.
  *
+ * Invariant: identical source bytes → identical document_id (idempotency via SHA-256).
+ * Deliberately does NOT: version documents, queue ingest jobs, or expose a public API.
+ *   (those are operator-only, local, or future scope).
+ *
  * Satisfies: FR-IG-1..6, FR-EM-1..4, FR-PS-1.
  *
  * Flow:
@@ -12,6 +16,7 @@
  *   6. On embed exhaustion → record chunks with NULL embedding; re-runnable.
  *   7. Persist document + all chunks in single transaction.
  *   8. Corrupt/bad files rejected without aborting batch.
+ *   9. Optional namespace prefix for eval isolation (S06).
  */
 import { readFile } from "node:fs/promises";
 import type { PoolClient } from "pg";
@@ -29,6 +34,11 @@ export interface IngestOptions {
   replaceOnReingest?: boolean;
   /** Override embedding config per-call. */
   embedConfig?: Parameters<typeof embedTexts>[1];
+  /**
+   * Namespace prefix for document IDs (e.g. "eval").
+   * Used in EVAL_ENV=prod to isolate eval documents from the production corpus.
+   */
+  namespace?: string;
 }
 
 export interface IngestResult {
@@ -133,10 +143,11 @@ export async function ingestFile(
 
   /* ---------- Step 4: Chunk ---------- */
   logEvent({ trace_id: traceId, stage: "ingest_chunk", status: "start" });
+  const namespacePrefix = options.namespace ? `${options.namespace}_` : "";
   const chunkInput: ChunkInput = {
     source: extraction.source,
     contentHash,
-    documentId: idem.documentId ?? crypto.randomUUID(),
+    documentId: idem.documentId ?? `${namespacePrefix}${crypto.randomUUID()}`,
     pages: extraction.pages.map((p) => ({
       page: p.page,
       text: p.text,

@@ -1,13 +1,16 @@
-/**                                                                                                                                                                                                                          
- * Generator — Google Gemma adapter for grounded answer generation (§10.8, FR-AN-1..5).
+/**
+ * Generator — DeepInfra adapter for Google Gemma (§10.8, FR-AN-1..5).
  *
- * Uses @google/genai with JSON mode (responseMimeType: application/json) and
- * a responseSchema to constrain output. Gemma relies on prompt discipline +
- * responseSchema + post-generation validation as the guarantee stack.
+ * Calls google/gemma-4-26B-A4B-it via DeepInfra's OpenAI-compatible
+ * completions endpoint (https://api.deepinfra.com/v1/openai).
+ * Uses response_format: { type: "json_object" } plus system-prompt
+ * discipline to constrain output. Post-generation validation
+ * (schema + citation gate) remains the correctness guarantee.
+ *
+ * No Anthropic, Claude, or Haiku models are used anywhere in this system.
  *
  * Repair loop: exactly one corrective re-call on schema or citation failure.
  */
-import { GoogleGenAI } from "@google/genai";
 import generationConfig from "../config/generation.json" with { type: "json" };
 import type { GroundedAnswer } from "../types/index.js";
 
@@ -27,49 +30,41 @@ export interface GenerateResult {
   latencyMs: number;
 }
 
-function buildGemmaClient(): GoogleGenAI {
-  const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? "";
-  if (!apiKey) {
-    throw new Error("GOOGLE_GENAI_API_KEY not set");
+/* ---------- System prompt that constrains Gemma to valid JSON ---------- */
+const JSON_SYSTEM_PROMPT = `You are a grounded question-answering assistant. Respond ONLY with a single JSON object matching this exact schema:
+{
+  "status": "answered" | "insufficient_evidence",
+  "answer": "string",
+  "citations": [
+    { "chunk_id": "string", "source": "string", "page": number|null, "snippet": "string" }
+  ]
+}
+Rules:
+- status is "insufficient_evidence" if the passages do not contain enough information.
+- Every citation snippet must be verbatim from the passages.
+- Do not wrap the output in markdown fences.`;
+
+/* ---------- DeepInfra client ---------- */
+
+function getApiKey(): string {
+  const key = process.env.DEEPINFRA_API_KEY ?? process.env.GOOGLE_GENAI_API_KEY ?? "";
+  if (!key) {
+    throw new Error("DEEPINFRA_API_KEY (or GOOGLE_GENAI_API_KEY) not set");
   }
-  return new GoogleGenAI({ apiKey });
+  return key;
 }
 
-function buildResponseSchema(): Record<string, unknown> {
-  return {
-    type: "object",
-    properties: {
-      status: {
-        type: "string",
-        enum: ["answered", "insufficient_evidence"],
-      },
-      answer: { type: "string" },
-      citations: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            chunk_id: { type: "string" },
-            source: { type: "string" },
-            page: {
-              oneOf: [{ type: "integer" }, { type: "null" }],
-            },
-            snippet: { type: "string" },
-          },
-          required: ["chunk_id", "source", "snippet"],
-        },
-      },
-    },
-    required: ["status", "answer", "citations"],
-  };
+function getBaseUrl(): string {
+  return process.env.DEEPINFRA_BASE_URL ?? "https://api.deepinfra.com/v1/openai";
 }
+
+/* ---------- Utilities ---------- */
 
 function stripMarkdownFences(text: string): string {
   const cleaned = text
     .replace(/^```(?:json)?\s*/, "")
     .replace(/```\s*$/, "")
     .trim();
-  // Find first '{' and last '}'
   const firstBrace = cleaned.indexOf("{");
   const lastBrace = cleaned.lastIndexOf("}");
   if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
@@ -78,32 +73,50 @@ function stripMarkdownFences(text: string): string {
   return cleaned.slice(firstBrace, lastBrace + 1);
 }
 
+/* ---------- Generation ---------- */
+
 export async function generateGroundedAnswer(
   opts: GenerateOptions
 ): Promise<GenerateResult> {
-  const client = buildGemmaClient();
+  const apiKey = getApiKey();
+  const baseUrl = getBaseUrl();
   const model = opts.model ?? generationConfig.model_id;
   const temperature = opts.temperature ?? generationConfig.temperature;
   const maxTokens = opts.maxOutputTokens ?? generationConfig.max_tokens;
 
   const start = performance.now();
 
-  const result = await client.models.generateContent({
-    model,
-    contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
-    config: {
-      temperature,
-      maxOutputTokens: maxTokens,
-      responseMimeType: "application/json",
-      responseSchema: buildResponseSchema(),
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
     },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: JSON_SYSTEM_PROMPT },
+        { role: "user", content: opts.prompt },
+      ],
+      temperature,
+      max_tokens: maxTokens,
+      response_format: { type: "json_object" },
+    }),
   });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "unknown");
+    throw new Error(`DeepInfra API error ${res.status}: ${body}`);
+  }
+
+  const data = await res.json() as {
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  };
 
   const latencyMs = Math.round(performance.now() - start);
 
-  const rawText =
-    typeof result.text === "string" ? result.text : JSON.stringify(result.text);
-
+  const rawText = data.choices?.[0]?.message?.content ?? "";
   const stripped = stripMarkdownFences(rawText);
 
   let answer: GroundedAnswer;
@@ -112,15 +125,16 @@ export async function generateGroundedAnswer(
   } catch (err) {
     answer = {
       status: "insufficient_evidence",
-      answer: "I don't have enough information in the provided documents to answer that.",
+      answer:
+        "I don't have enough information in the provided documents to answer that.",
       citations: [],
     };
   }
 
-  const usage = (result as unknown as { usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } }).usageMetadata;
-  const inputTokens = usage?.promptTokenCount ?? 0;
-  const outputTokens = usage?.candidatesTokenCount ?? 0;
-  const totalTokens = usage?.totalTokenCount ?? inputTokens + outputTokens;
+  const usage = data.usage;
+  const inputTokens = usage?.prompt_tokens ?? 0;
+  const outputTokens = usage?.completion_tokens ?? 0;
+  const totalTokens = usage?.total_tokens ?? inputTokens + outputTokens;
 
   return {
     answer,
@@ -131,6 +145,8 @@ export async function generateGroundedAnswer(
     latencyMs,
   };
 }
+
+/* ---------- Repair ---------- */
 
 export async function generateRepair(
   opts: GenerateOptions & {

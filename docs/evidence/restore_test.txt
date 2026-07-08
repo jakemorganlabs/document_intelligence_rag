@@ -1,0 +1,12 @@
+# Restore Test Transcript — Closeout Slot
+
+> **Placeholder:** Populate after running `bash deploy/restore.sh`.
+
+Expected contents:
+```
+[restore] Using newest dump: /var/backups/pgvector/rag_YYYY-MM-DD.dump
+[restore] Starting scratch pgvector/pgvector:pg16...
+[restore] Restoring dump...
+[restore] Dump restored. Running ANN sanity query...
+[restore] PASS — ANN sanity returned 3 row(s). Vectors survived.
+```

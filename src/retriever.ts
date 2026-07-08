@@ -1,6 +1,11 @@
 /**
  * Retriever — query embed + ANN search (§10.5, FR-RE-1..4).
  *
+ * Invariant: the same embedding model and normalisation are used at query time
+ *   as at ingest time. Cosine distance via pgvector HNSW is deterministic.
+ * Deliberately does NOT: rerank, fuse sparse signals, or filter by metadata.
+ *   (those are future scope per SRS §11.3).
+ *
  * Uses the same OpenAI embedding model and normalisation as ingest.
  * Single-tier dense retrieval; no re-ranker.
  */

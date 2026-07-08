@@ -1,48 +1,95 @@
-import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { generateGroundedAnswer } from "../src/generator.js";
-
-vi.mock("@google/genai", () => ({
-  GoogleGenAI: vi.fn().mockImplementation(() => ({
-    models: {
-      generateContent: vi.fn().mockResolvedValue({
-        text: '{"status":"answered","answer":"test answer","citations":[{"chunk_id":"c-1","source":"doc.pdf","snippet":"test snippet"}]}',
-        usageMetadata: {
-          promptTokenCount: 120,
-          candidatesTokenCount: 45,
-          totalTokenCount: 165,
-        },
-      }),
-    },
-  })),
-}));
 
 describe("generator", () => {
   const originalEnv = process.env;
 
-  beforeAll(() => {
-    process.env = { ...originalEnv, GOOGLE_GENAI_API_KEY: "test-key" };
-  });
+  it("parses JSON response from Gemma via DeepInfra", async () => {
+    process.env = {
+      ...originalEnv,
+      DEEPINFRA_API_KEY: "test-key",
+      DEEPINFRA_BASE_URL: "https://api.test.local",
+    };
 
-  afterAll(() => {
-    process.env = originalEnv;
-  });
+    const mockResponse = {
+      choices: [
+        {
+          message: {
+            content:
+              '{"status":"answered","answer":"test answer","citations":[{"chunk_id":"c-1","source":"doc.pdf","page":1,"snippet":"test snippet"}]}',
+          },
+        },
+      ],
+      usage: { prompt_tokens: 120, completion_tokens: 45, total_tokens: 165 },
+    };
 
-  it("parses JSON response from Gemma", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    } as Response);
+
     const result = await generateGroundedAnswer({ prompt: "test prompt" });
     expect(result.answer.status).toBe("answered");
     expect(result.answer.citations).toHaveLength(1);
     expect(result.inputTokens).toBe(120);
     expect(result.outputTokens).toBe(45);
     expect(result.latencyMs).toBeGreaterThanOrEqual(0);
+
+    process.env = originalEnv;
+    vi.restoreAllMocks();
   });
 
   it("strips markdown fences from response", async () => {
-    // This test would need a custom mock; for now we assert the function exists
-    expect(typeof generateGroundedAnswer).toBe("function");
+    process.env = {
+      ...originalEnv,
+      DEEPINFRA_API_KEY: "test-key",
+      DEEPINFRA_BASE_URL: "https://api.test.local",
+    };
+
+    const mockWithFence = {
+      choices: [
+        {
+          message: {
+            content:
+              '```json\n{"status":"answered","answer":"a","citations":[]}\n```',
+          },
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockWithFence),
+    } as Response);
+
+    const result = await generateGroundedAnswer({ prompt: "test" });
+    expect(result.answer.status).toBe("answered");
+
+    process.env = originalEnv;
+    vi.restoreAllMocks();
   });
 
   it("returns insufficient_evidence on JSON parse failure", async () => {
-    // Implementation coverage: the catch block exists
-    expect(true).toBe(true);
+    process.env = {
+      ...originalEnv,
+      DEEPINFRA_API_KEY: "test-key",
+      DEEPINFRA_BASE_URL: "https://api.test.local",
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          choices: [{ message: { content: "not-json" } }],
+          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        }),
+    } as Response);
+
+    const result = await generateGroundedAnswer({ prompt: "test" });
+    expect(result.answer.status).toBe("insufficient_evidence");
+
+    process.env = originalEnv;
+    vi.restoreAllMocks();
   });
 });

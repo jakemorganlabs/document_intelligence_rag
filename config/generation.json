@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "provider": "google",
+  "provider": "deepinfra",
   "model_id": "google/gemma-4-26B-A4B-it",
   "temperature": 0,
   "max_tokens": 1024,

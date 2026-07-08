@@ -2,6 +2,14 @@
   "name": "document-intelligence-rag",
   "version": "1.0.0",
   "description": "Document Intelligence — Grounded RAG with Citations. Portfolio Piece II (MICT-RAG-002).",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jakemorganlabs/document-intelligence-rag.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jakemorganlabs/document-intelligence-rag/issues"
+  },
+  "homepage": "https://docs.jakemorganlabs.dev",
   "keywords": [
     "rag",
     "citations",
@@ -43,7 +51,6 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
-    "@google/genai": "^2.9.0",
     "dotenv": "^16.4.0",
     "openai": "^6.44.0",
     "pg": "^8.14.0",

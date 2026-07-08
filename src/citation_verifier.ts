@@ -1,6 +1,11 @@
 /**
  * Citation Verifier — deterministic grounding gate (§10.9, FR-CI-2).
  *
+ * Invariant: a citation is verified only if its snippet is a verbatim (whitespace-normalized)
+ *   substring of the retrieved chunk text and the chunk_id is in the retrieved set.
+ * Deliberately does NOT: fuzzy-match, paraphrase-check, or tolerate missing chunk_ids.
+ *   (those would weaken the grounding guarantee).
+ *
  * Normalization rules (applied in order):
  * 1. Unicode NFC normalization
  * 2. Fold smart single/double quotes to ASCII straight quotes

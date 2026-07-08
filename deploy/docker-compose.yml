@@ -1,0 +1,105 @@
+#
+# Production Docker Compose — MICT-RAG-002 S06
+#
+# Stack: n8n + pgvector/pgvector:pg16 + Python extractor sidecar + cloudflared
+#
+# §7 UID/GID Pitfall:
+#   The operator drops PDFs into the host corpus/ directory. Both n8n and the
+#   sidecar containers must be able to read them. If the container user UID/GID
+#   does not match the host directory permissions, ingest silently skips files.
+#   Fix: add `user: "<host_uid>:<host_gid>"` to n8n and sidecar services, or
+#   `chmod -R a+r corpus/` on the host before starting.
+#
+# No public ports on Postgres or the sidecar. n8n loopback-only.
+# Cloudflare tunnel provides ingress only for /query and /health.
+#
+
+services:
+  # --- Postgres + pgvector (persistent corpus vectors) ---
+  postgres:
+    image: pgvector/pgvector:pg16          # pinned — bump deliberately
+    container_name: docintel-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+      - ./corpus:/corpus:ro               # read-only bind-mount for operator drops
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- n8n (workflow orchestration + webhook endpoints) ---
+  n8n:
+    image: n8nio/n8n:1.82.0               # pinned — bump deliberately
+    container_name: docintel-n8n
+    environment:
+      # Database
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      # n8n internals
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_BASIC_AUTH_ACTIVE: "false"
+      N8N_WEBHOOK_URL: ${WEBHOOK_URL}
+      # Application env vars passed through
+      DATABASE_URL: ${DATABASE_URL}
+      EMBEDDING_PROVIDER_API_KEY: ${EMBEDDING_PROVIDER_API_KEY}
+      HMAC_SECRET: ${HMAC_SECRET}
+      SIMILARITY_FLOOR: ${SIMILARITY_FLOOR}
+      TOP_K: ${TOP_K}
+      GOOGLE_GENAI_API_KEY: ${GOOGLE_GENAI_API_KEY}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./corpus:/corpus:ro               # operator drops PDFs here
+    # user: "1000:1000"                    # uncomment and match host corpus owner
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz | grep -q ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # --- Python extractor sidecar ---
+  extractor:
+    build:
+      context: ../sidecar
+      dockerfile: ../deploy/sidecar/Dockerfile
+    container_name: docintel-extractor
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./corpus:/corpus:ro               # read-only bind-mount
+    # user: "1000:1000"                    # uncomment and match host corpus owner
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import pypdf; print(\"ok\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Cloudflare Tunnel (ingress only) ---
+  cloudflared:
+    image: cloudflare/cloudflared:2025.2.0  # pinned — bump deliberately
+    container_name: docintel-tunnel
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+
+volumes:
+  pgvector_data:
+  n8n_data:

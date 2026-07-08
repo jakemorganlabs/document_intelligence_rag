@@ -3,9 +3,14 @@
  * Eval runner — ingest eval corpus, run all labeled fixtures, collect results.
  *
  * Usage:
- *   npx tsx evals/run.ts [--clean]
+ *   npx tsx evals/run.ts [--clean]         # local mode
+ *   EVAL_ENV=prod npx tsx evals/run.ts     # production mode (requires HMAC_SECRET)
  *
- * With --clean, drops the public schema and re-runs migrations before ingest.
+ * Production mode:
+ *   - Connects to DATABASE_URL (must point at prod DB).
+ *   - Ingests eval corpus with `eval_` document-id prefix (non-contamination).
+ *   - Calls the live public URL with HMAC-signed requests.
+ *   - After the run, asserts no non-eval_ rows exist in the documents table.
  */
 import "dotenv/config";
 import { readdir, readFile } from "node:fs/promises";
@@ -16,6 +21,7 @@ import { getClient } from "../src/db.js";
 import { ingestFile } from "../src/ingest.js";
 import { queryDocument } from "../src/query.js";
 import { runMigrations } from "../scripts/migrate.js";
+import { signHmac } from "../src/auth.js";
 import type {
   AnswerableLabel,
   AdversarialLabel,
@@ -26,6 +32,9 @@ import type {
 const __dirname = resolve(fileURLToPath(import.meta.url), "..");
 const CORPUS_DIR = resolve(__dirname, "../fixtures/eval_corpus/pdfs");
 const QUESTIONS_DIR = resolve(__dirname, "../fixtures/eval_corpus/questions");
+
+const IS_PROD = process.env.EVAL_ENV === "prod";
+const PROD_URL = process.env.PROD_QUERY_URL ?? "https://docs.jakemorganlabs.dev/query";
 
 /* ---------- helpers ---------- */
 
@@ -42,11 +51,11 @@ async function getPdfFiles(): Promise<string[]> {
     .sort();
 }
 
-async function ingestCorpus(client: PoolClient): Promise<void> {
+async function ingestCorpus(client: PoolClient, namespace?: string): Promise<void> {
   const files = await getPdfFiles();
-  console.log(`[eval] Ingesting ${files.length} eval PDFs...`);
+  console.log(`[eval] Ingesting ${files.length} eval PDFs${namespace ? ` with namespace '${namespace}_'` : ""}...`);
   for (const file of files) {
-    const result = await ingestFile(file, client);
+    const result = await ingestFile(file, client, { namespace });
     console.log(
       `  ${result.status === "indexed" ? "[OK]" : result.status === "skipped" ? "[SK]" : "[ER]"} ${result.source} | chunks: ${result.chunksTotal} | embed: ${result.chunksEmbedded}`
     );
@@ -54,7 +63,7 @@ async function ingestCorpus(client: PoolClient): Promise<void> {
   console.log("[eval] Ingest complete.");
 }
 
-async function runFixture(
+async function runLocalFixture(
   label: { id: string; question: string; expectedStatus?: "answered" | "insufficient_evidence" },
   client: PoolClient
 ): Promise<FixtureResult> {
@@ -93,6 +102,85 @@ async function runFixture(
   }
 }
 
+async function runProdFixture(
+  label: { id: string; question: string; expectedStatus?: "answered" | "insufficient_evidence" }
+): Promise<FixtureResult> {
+  const secret = process.env.HMAC_SECRET ?? "";
+  if (!secret) throw new Error("HMAC_SECRET is required for EVAL_ENV=prod");
+
+  const body = JSON.stringify({ question: label.question });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = signHmac(secret, timestamp, body);
+
+  const start = performance.now();
+  try {
+    const res = await fetch(PROD_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Timestamp": String(timestamp),
+        "X-Signature": signature,
+      },
+      body,
+    });
+
+    const latencyMs = Math.round(performance.now() - start);
+    if (!res.ok) {
+      return {
+        labelId: label.id,
+        question: label.question,
+        category: "unknown",
+        expectedStatus: label.expectedStatus,
+        answer: { status: "insufficient_evidence", answer: `HTTP ${res.status}`, citations: [] },
+        retrieved: [],
+        topScore: 0,
+        repairUsed: false,
+        gateFired: null,
+        latencyMs,
+        error: `HTTP ${res.status}`,
+      };
+    }
+
+    const data = await res.json() as {
+      status: "answered" | "insufficient_evidence";
+      answer: string;
+      citations: unknown[];
+      audit_id?: string;
+    };
+
+    return {
+      labelId: label.id,
+      question: label.question,
+      category: "unknown",
+      expectedStatus: label.expectedStatus,
+      answer: {
+        status: data.status,
+        answer: data.answer,
+        citations: Array.isArray(data.citations) ? data.citations.map((c: unknown) => c as { chunk_id: string; source: string; page: number | null; snippet: string }) : [],
+      },
+      retrieved: [],
+      topScore: 0,
+      repairUsed: false,
+      gateFired: null,
+      latencyMs,
+    };
+  } catch (err) {
+    return {
+      labelId: label.id,
+      question: label.question,
+      category: "unknown",
+      expectedStatus: label.expectedStatus,
+      answer: { status: "insufficient_evidence", answer: "Network error", citations: [] },
+      retrieved: [],
+      topScore: 0,
+      repairUsed: false,
+      gateFired: null,
+      latencyMs: Math.round(performance.now() - start),
+      error: (err as Error).message,
+    };
+  }
+}
+
 /* ---------- public API ---------- */
 
 export interface EvalRunResult {
@@ -108,10 +196,10 @@ export async function runEvals(
   const client = options.client ?? (await getClient());
 
   if (!options.skipIngest) {
-    // Simple check: if no documents exist, assume we need to ingest
     const docCount = await client.query("SELECT COUNT(*) AS n FROM documents");
     if (Number(docCount.rows[0]?.n ?? 0) === 0) {
-      await ingestCorpus(client);
+      // In prod mode, namespace eval docs with "eval" prefix
+      await ingestCorpus(client, IS_PROD ? "eval" : undefined);
     } else {
       console.log("[eval] Documents already present; skip ingest (use --clean to force refresh).");
     }
@@ -124,10 +212,9 @@ export async function runEvals(
   console.log(`[eval] Running ${answerable.length} answerable fixtures...`);
   const answerableResults: FixtureResult[] = [];
   for (const label of answerable) {
-    const r = await runFixture(
-      { id: label.id, question: label.question, expectedStatus: undefined },
-      client
-    );
+    const r = IS_PROD
+      ? await runProdFixture({ id: label.id, question: label.question, expectedStatus: undefined })
+      : await runLocalFixture({ id: label.id, question: label.question, expectedStatus: undefined }, client);
     r.category = label.category;
     answerableResults.push(r);
   }
@@ -135,10 +222,9 @@ export async function runEvals(
   console.log(`[eval] Running ${unanswerable.length} unanswerable fixtures...`);
   const unanswerableResults: FixtureResult[] = [];
   for (const label of unanswerable) {
-    const r = await runFixture(
-      { id: label.id, question: label.question, expectedStatus: "insufficient_evidence" },
-      client
-    );
+    const r = IS_PROD
+      ? await runProdFixture({ id: label.id, question: label.question, expectedStatus: "insufficient_evidence" })
+      : await runLocalFixture({ id: label.id, question: label.question, expectedStatus: "insufficient_evidence" }, client);
     r.category = "unanswerable";
     unanswerableResults.push(r);
   }
@@ -146,10 +232,9 @@ export async function runEvals(
   console.log(`[eval] Running ${adversarial.length} adversarial fixtures...`);
   const adversarialResults: FixtureResult[] = [];
   for (const label of adversarial) {
-    const r = await runFixture(
-      { id: label.id, question: label.question, expectedStatus: label.expected_status },
-      client
-    );
+    const r = IS_PROD
+      ? await runProdFixture({ id: label.id, question: label.question, expectedStatus: label.expected_status })
+      : await runLocalFixture({ id: label.id, question: label.question, expectedStatus: label.expected_status }, client);
     r.category = label.category;
     adversarialResults.push(r);
   }
@@ -181,11 +266,30 @@ async function main() {
 
   const results = await runEvals();
 
-  // Save raw results for debugging
-  const resultsPath = resolve(__dirname, "results.json");
+  // Corruption check in prod mode: assert no non-eval_ documents
+  if (IS_PROD) {
+    console.log("[eval] Verifying corpus non-contamination...");
+    const client = await getClient();
+    const nonEval = await client.query(
+      `SELECT document_id FROM documents WHERE document_id NOT LIKE 'eval_%' LIMIT 1`
+    );
+    await client.release();
+    if (nonEval.rows.length > 0) {
+      console.error(
+        `[eval] FAIL: Non-eval document found in DB: ${nonEval.rows[0]!.document_id}`
+      );
+      process.exit(1);
+    }
+    console.log("[eval] Corpus non-contamination verified.");
+  }
+
+  // Save raw results
+  const resultsFile = IS_PROD ? "results_prod.json" : "results.json";
+  const resultsPath = resolve(__dirname, resultsFile);
   const resultsJson = JSON.stringify(
     {
       generatedAt: new Date().toISOString(),
+      env: IS_PROD ? "prod" : "local",
       answerable: results.answerableResults,
       unanswerable: results.unanswerableResults,
       adversarial: results.adversarialResults,

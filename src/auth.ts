@@ -1,6 +1,11 @@
 /**
  * HMAC-SHA256 authentication for the query endpoint (§16, NFR-SE-1).
  *
+ * Invariant: every production request must carry X-Timestamp + X-Signature headers.
+ *   Unsigned requests are rejected before retrieval, grounding, or generation.
+ * Deliberately does NOT: implement OAuth, JWT, or session cookies.
+ *   (HMAC is sufficient for stateless machine-to-machine queries).
+ *
  * Signature = HMAC-SHA256(secret, timestamp || body)
  * where timestamp is unix epoch seconds as a string.
  *

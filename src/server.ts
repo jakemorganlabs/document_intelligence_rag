@@ -2,16 +2,20 @@
  * Query endpoint — minimal HTTP server (§5.5, FR-ER-3, NFR-SE-1).
  *
  * POST /query
+ * GET  /health  (no-op, checks DB connectivity, no model call)
+ *
  * Headers: X-Timestamp, X-Signature
  * Body: { "question": "string" }
  * Returns: { status, answer, citations, audit_id }
  *
  * Authentication: HMAC-SHA256 over (timestamp || body).
  * No open inbound ports in production; exposed via encrypted tunnel (§19).
+ * HMAC secret is read from $HMAC_SECRET only — never a literal, never a default.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { queryDocument } from "./query.js";
 import { verifyHmac } from "./auth.js";
+import { getClient } from "./db.js";
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -25,6 +29,23 @@ export function buildServer() {
   return createServer(async (req: IncomingMessage, res: ServerResponse) => {
     res.setHeader("Content-Type", "application/json");
 
+    /* ---------- Health check (no-auth, no-model) ---------- */
+    if (req.method === "GET" && req.url === "/health") {
+      try {
+        const client = await getClient();
+        await client.query("SELECT 1");
+        client.release();
+        res.writeHead(200);
+        res.end(JSON.stringify({ status: "ok" }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "DB unavailable";
+        res.writeHead(503);
+        res.end(JSON.stringify({ status: "error", detail: message }));
+      }
+      return;
+    }
+
+    /* ---------- Only /query is a supported POST path ---------- */
     if (req.method !== "POST" || req.url !== "/query") {
       res.writeHead(404);
       res.end(JSON.stringify({ error: "Not found" }));
@@ -36,8 +57,8 @@ export function buildServer() {
       body += chunk;
     }
 
-    /* ---------- Auth gate (S05) ---------- */
-    const secret = process.env.QUERY_SECRET ?? "";
+    /* ---------- Auth gate (S05) — HMAC_SECRET only ---------- */
+    const secret = process.env.HMAC_SECRET ?? "";
     if (secret) {
       const timestamp = getHeader(req, "X-Timestamp");
       const signature = getHeader(req, "X-Signature");
@@ -92,7 +113,9 @@ export function buildServer() {
 export function startServer(port = PORT) {
   const server = buildServer();
   server.listen(port, () => {
-    console.log(`Query endpoint listening on http://localhost:${port}/query`);
+    console.log(`Server listening on http://localhost:${port}`);
+    console.log(`  POST /query  (HMAC required in production)`);
+    console.log(`  GET  /health (no-auth DB connectivity probe)`);
   });
   return server;
 }
