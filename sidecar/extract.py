@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PDF/Text Extractor — Python sidecar for MICT-RAG-002 S02.
+PDF/Text extractor: Python sidecar for MICT-RAG-002 S02.
 
 Usage:
     python sidecar/extract.py <file_path>
@@ -15,8 +15,8 @@ Outputs JSON to stdout:
   ]
 }
 
-Supports PDF and plain-text/markdown files. For plain text, treats the
-entire file as a single page.
+Supports PDF and plain-text/markdown files. Plain text is treated as a
+single page.
 """
 import sys
 import json

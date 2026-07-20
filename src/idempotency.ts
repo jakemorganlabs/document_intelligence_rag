@@ -1,9 +1,5 @@
-/**
- * Idempotency check — skip re-ingest of unchanged content.
- *
- * Satisfies: FR-IG-5 (idempotency via content_hash).
- * Returns `skip` when a document with the same hash already exists.
- */
+// Idempotency check: skip re-ingest of unchanged content (FR-IG-5).
+// Returns `skip` when a document with the same hash already exists.
 import type { PoolClient } from "pg";
 import { findDocumentByHash } from "./db.js";
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# 
+#
 # S02 Ingest Smoke Test
 #
 # Usage (from repo root):

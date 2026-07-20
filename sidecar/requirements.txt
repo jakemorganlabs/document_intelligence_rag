@@ -1,4 +1,4 @@
-# Python sidecar dependencies for MICT-RAG-002 S02 Ingest Pipeline
+# Python sidecar dependencies for the S02 ingest pipeline.
 # Install: pip install -r sidecar/requirements.txt
 
 pypdf>=5.4.0

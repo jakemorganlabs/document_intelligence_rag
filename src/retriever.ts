@@ -1,14 +1,10 @@
-/**
- * Retriever — query embed + ANN search (§10.5, FR-RE-1..4).
- *
- * Invariant: the same embedding model and normalisation are used at query time
- *   as at ingest time. Cosine distance via pgvector HNSW is deterministic.
- * Deliberately does NOT: rerank, fuse sparse signals, or filter by metadata.
- *   (those are future scope per SRS §11.3).
- *
- * Uses the same OpenAI embedding model and normalisation as ingest.
- * Single-tier dense retrieval; no re-ranker.
- */
+// Retriever: query embed + ANN search (§10.5, FR-RE-1..4).
+//
+// The same embedding model and normalisation are used at query time as at ingest
+// time. Cosine distance via pgvector HNSW is deterministic.
+//
+// Does NOT rerank, fuse sparse signals, or filter by metadata. Those are future
+// scope per SRS §11.3. Single-tier dense retrieval, no re-ranker.
 import { embedTexts, getEmbeddingConfigFromEnv } from "./embedder.js";
 import { annSearch, getClient } from "./db.js";
 import type { PoolClient } from "pg";
@@ -31,7 +27,7 @@ export async function retrieveChunks(
 ): Promise<RetrieveResult> {
   const { question, topK = retrievalConfig.top_k } = opts;
 
-  // 1. Embed the query with the same model as ingest
+  // embed the query with the same model used at ingest
   const embedConfig = getEmbeddingConfigFromEnv();
   const embedResult = await embedTexts([question], embedConfig);
   if (embedResult.failed.length > 0 || embedResult.succeeded.length === 0) {
@@ -39,7 +35,7 @@ export async function retrieveChunks(
   }
   const queryVector = embedResult.succeeded[0]!.embedding;
 
-  // 2. ANN search via pgvector
+  // ANN search via pgvector
   const ownClient = !opts.client;
   const client = opts.client ?? (await getClient());
   try {

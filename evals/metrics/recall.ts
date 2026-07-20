@@ -1,11 +1,10 @@
-/**
- * recall@k metric implementation (§18, FR-RE-1).
- *
- * For each answerable question: did the retrieved set (top-k, before relevance gate)
- * contain at least one chunk whose source matches a gold source?
- *
- * This measures retriever quality, not end-to-end correctness.
- */
+// recall@k metric (§18, FR-RE-1).
+//
+// For each answerable question: did the retrieved set (top-k, before the
+// relevance gate) contain at least one chunk whose source matches a gold
+// source?
+//
+// Measures retriever quality, not end-to-end correctness.
 import type { AnswerableLabel, FixtureResult } from "../types.js";
 
 export interface RecallResult {

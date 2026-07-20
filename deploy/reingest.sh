@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 #
-# deploy/reingest.sh — Re-ingest the entire /corpus after restore or corpus drop (§10.1).
+# deploy/reingest.sh: re-ingest the entire /corpus after restore or corpus drop (§10.1).
 #
 # Usage (from repo root):
 #   bash deploy/reingest.sh
 #
-# Exits non-zero if zero files ingested, which catches the silent UID/GID skip
-# from §7 (containers cannot read the corpus bind-mount).
+# Exits non-zero if zero files ingested. That catches the silent UID/GID skip
+# in §7 (containers cannot read the corpus bind-mount).
 
 CORPUS_DIR="./corpus"
 INGESTED=0
@@ -21,7 +21,7 @@ fi
 echo "[reingest] Scanning $CORPUS_DIR for PDFs..."
 
 for pdf in "$CORPUS_DIR"/*.pdf; do
-  # If no PDFs match, the literal string '*.pdf' will be returned — skip it
+  # if no PDFs match, the literal string '*.pdf' is returned; skip it
   [[ "$pdf" == "$CORPUS_DIR/*.pdf" ]] && continue
 
   echo "[reingest] Ingesting $(basename "$pdf")..."

@@ -1,13 +1,11 @@
-/**
- * Alert adapter — Slack webhook (§17.3).
- *
- * Posts a compact message when a dead-letter row is created.
- * Reuses the same adapter pattern as MICT-PIPE-001.
- *
- * Environment:
- *   SLACK_WEBHOOK_URL — the incoming webhook URL.
- *   If unset, alerts are silently dropped (safe default for dev/test).
- */
+// Alert adapter: Slack webhook (§17.3).
+//
+// Posts a compact message when a dead-letter row is created. Same adapter
+// pattern as MICT-PIPE-001.
+//
+// Environment:
+//   SLACK_WEBHOOK_URL: the incoming webhook URL.
+//   If unset, alerts are silently dropped (safe default for dev/test).
 
 export interface AlertPayload {
   traceId?: string;
@@ -25,7 +23,7 @@ export async function sendSlackAlert(payload: AlertPayload): Promise<void> {
   }
 
   const body = JSON.stringify({
-    text: `*Document Intelligence Alert* — ${payload.stage}`,
+    text: `*Document Intelligence Alert* - ${payload.stage}`,
     blocks: [
       {
         type: "section",

@@ -1,9 +1,7 @@
-/**
- * Database repository — CRUD for documents and chunks.
- *
- * Satisfies: FR-PS-1 (persistence), FR-IG-5 (idempotency via content_hash).
- * All operations use parameterized queries to prevent injection.
- */
+// Database repository: CRUD for documents and chunks.
+//
+// All operations use parameterised queries to prevent injection (FR-PS-1,
+// FR-IG-5).
 import { Client, type Pool, type PoolClient } from "pg";
 import type { ChunkRecord } from "../types/index.js";
 
@@ -39,7 +37,7 @@ export async function getClient(): Promise<PoolClient> {
   return pool.connect();
 }
 
-/* ---------- Document queries ---------- */
+// document queries
 
 export async function findDocumentByHash(
   hash: string,
@@ -52,10 +50,8 @@ export async function findDocumentByHash(
   return res.rows[0] ?? null;
 }
 
-/**
- * Upsert a document: INSERT or UPDATE on content_hash conflict.
- * Returns the document_id regardless of whether it was inserted or updated.
- */
+// Upsert a document: INSERT or UPDATE on content_hash conflict. Returns the
+// document_id regardless of insert vs update.
 export async function upsertDocument(
   row: Omit<DocumentRow, "document_id" | "ingested_at" | "updated_at">,
   client: PoolClient | Client
@@ -105,7 +101,7 @@ export async function updateDocumentStatus(
   );
 }
 
-/* ---------- Chunk queries ---------- */
+// chunk queries
 
 export async function insertChunks(
   chunks: ChunkRecord[],
@@ -179,7 +175,7 @@ export async function updateChunkEmbedding(
   );
 }
 
-/* ---------- Dead letter ---------- */
+// dead letter
 
 export async function insertDeadLetter(
   client: PoolClient | Client,
@@ -198,7 +194,7 @@ export async function insertDeadLetter(
   );
 }
 
-/* ---------- ANN sanity ---------- */
+// ANN sanity
 
 export async function annSearch(
   queryVector: number[],

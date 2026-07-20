@@ -103,7 +103,7 @@ describe("query pipeline (with mocked dependencies)", () => {
     expect(result.answer.citations).toHaveLength(0);
     expect(result.audit.gate_fired).toBe("relevance");
 
-    // Verify generator was NOT called
+    // generator was NOT called
     expect(generator.generateGroundedAnswer).not.toHaveBeenCalled();
   });
 
@@ -113,7 +113,7 @@ describe("query pipeline (with mocked dependencies)", () => {
       topScore: 0.71,
     });
 
-    // First call returns invalid schema (missing citations array)
+    // first call returns invalid schema (missing citations array)
     const badAnswer = { status: "answered", answer: "bad" } as unknown as GroundedAnswer;
     const goodAnswer: GroundedAnswer = {
       status: "answered",

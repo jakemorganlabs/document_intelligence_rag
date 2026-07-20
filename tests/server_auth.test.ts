@@ -128,8 +128,8 @@ describe("server auth (S05)", () => {
       ).on("error", (err) => resolve({ status: 0, body: { error: err.message } })).end();
     });
 
-    // 200 if DB available, 503 if DB not available — either is acceptable
-    // because it proves the endpoint exists and does not require auth
+    // 200 if DB available, 503 if DB not available. Either is acceptable:
+    // it proves the endpoint exists and does not require auth.
     expect(res.status === 200 || res.status === 503).toBe(true);
 
     server.closeAllConnections?.();

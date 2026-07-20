@@ -1,13 +1,11 @@
-/**
- * Eval suite types (--eval suite internal contract).
- *
- * These types are used only by the eval runner and metrics modules.
- * They do not appear in the production query path.
- */
+// Eval suite types (internal contract).
+//
+// Used only by the eval runner and metrics modules. They do not appear in the
+// production query path.
 
 import type { GroundedAnswer, RetrievedChunk } from "../types/index.js";
 
-/** One answerable fixture from fixtures/eval_corpus/questions/answerable.json */
+// One answerable fixture from fixtures/eval_corpus/questions/answerable.json
 export interface AnswerableLabel {
   id: string;
   question: string;
@@ -17,14 +15,14 @@ export interface AnswerableLabel {
   gold_snippets: string[];
 }
 
-/** One unanswerable fixture from fixtures/eval_corpus/questions/unanswerable.json */
+// One unanswerable fixture from fixtures/eval_corpus/questions/unanswerable.json
 export interface UnanswerableLabel {
   id: string;
   question: string;
   note: string;
 }
 
-/** One adversarial fixture from fixtures/eval_corpus/questions/adversarial.json */
+// One adversarial fixture from fixtures/eval_corpus/questions/adversarial.json
 export interface AdversarialLabel {
   id: string;
   question: string;
@@ -34,7 +32,7 @@ export interface AdversarialLabel {
   expected_status: "answered" | "insufficient_evidence";
 }
 
-/** Result of running a single fixture through the system */
+// Result of running a single fixture through the system
 export interface FixtureResult {
   labelId: string;
   question: string;
@@ -49,7 +47,7 @@ export interface FixtureResult {
   error?: string;
 }
 
-/** Per-metric summary */
+// Per-metric summary
 export interface MetricSummary {
   name: string;
   value: number;
@@ -58,7 +56,7 @@ export interface MetricSummary {
   description: string;
 }
 
-/** Per-category breakdown */
+// Per-category breakdown
 export interface CategoryBreakdown {
   category: string;
   total: number;
@@ -72,7 +70,7 @@ export interface CategoryBreakdown {
   }>;
 }
 
-/** Final eval report */
+// Final eval report
 export interface EvalReport {
   generatedAt: string;
   totalFixtures: number;

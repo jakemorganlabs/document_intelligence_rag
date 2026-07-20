@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 #
-# secret_gate.sh — scan tracked files for secrets before commit (S06).
+# secret_gate.sh: scan tracked files for secrets before commit (S06).
 #
 # Fail conditions:
 #   1. .env.production exists in working tree
@@ -21,7 +21,7 @@ if [[ -f .env.production ]]; then
   echo "       Remove it immediately; only .env.production.example may be committed."
   ERRORS=$((ERRORS + 1))
 else
-  echo "       OK — .env.production not present."
+  echo "       OK: .env.production not present."
 fi
 
 # 2. Block HMAC_SECRET= with literal values in tracked files
@@ -29,10 +29,10 @@ echo "[gate] Scanning for HMAC_SECRET literals..."
 MATCHES=$(git grep -n "HMAC_SECRET=" 2>/dev/null || true)
 if [[ -n "${MATCHES}" ]]; then
   while IFS= read -r line; do
-    # Skip commented-out lines and template lines
+    # skip commented-out lines and template lines
     if echo "$line" | grep -qE '^[^:]+:[0-9]+:#'; then continue; fi
     if echo "$line" | grep -qE '__REPLACE_ME__'; then continue; fi
-    # Fail if it looks like a literal assignment, not just env var export
+    # fail if it looks like a literal assignment, not just env var export
     if echo "$line" | grep -Eq 'HMAC_SECRET=["]?[^_"?{}$][^"]*["]?$'; then
       echo -e "${RED}FAIL: Literal HMAC_SECRET found in tracked file:${NC} $line"
       ERRORS=$((ERRORS + 1))
@@ -70,11 +70,11 @@ if [[ -d workflows ]]; then
   fi
 fi
 
-# Summary
+# summary
 if [[ "$ERRORS" -eq 0 ]]; then
-  echo -e "${GREEN}[gate] PASS — no secrets detected in tracked files.${NC}"
+  echo -e "${GREEN}[gate] PASS: no secrets detected in tracked files.${NC}"
   exit 0
 else
-  echo -e "${RED}[gate] FAIL — $ERRORS issue(s) found. Fix before committing.${NC}"
+  echo -e "${RED}[gate] FAIL: $ERRORS issue(s) found. Fix before committing.${NC}"
   exit 1
 fi

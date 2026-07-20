@@ -1,6 +1,6 @@
-# Smoke Test Output — Closeout Slot
+# Smoke Test Output - Closeout Slot
 
-> **Placeholder:** Populate after running `scripts/smoke_prod.sh` against the deployed instance.
+Placeholder. Populate after running `scripts/smoke_prod.sh` against the deployed instance.
 
 Run:
 ```bash
@@ -8,5 +8,5 @@ HMAC_SECRET="your-secret" bash scripts/smoke_prod.sh
 ```
 
 Expected contents:
-- Signed request → 200 + `citations` array non-empty
-- Unsigned request → 401
+- Signed request -> 200 + `citations` array non-empty
+- Unsigned request -> 401

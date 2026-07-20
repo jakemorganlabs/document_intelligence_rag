@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 #
-# deploy/restore.sh — Restore test with ANN sanity check.
+# deploy/restore.sh: restore test with ANN sanity check.
 #
 # Steps:
-#   1. Find newest backup dump.
-#   2. Spin scratch pgvector/pgvector:pg16.
-#   3. pg_restore the dump.
-#   4. Run ANN sanity query: ORDER BY embedding <=> $1 LIMIT 3.
-#   5. Assert rows returned → PASS/FAIL.
+#   1. find newest backup dump
+#   2. spin scratch pgvector/pgvector:pg16
+#   3. pg_restore the dump
+#   4. run ANN sanity query: ORDER BY embedding <=> $1 LIMIT 3
+#   5. assert rows returned -> PASS/FAIL
 #
 # This is the "restore test passed" criterion for nightly backups (§17).
 
@@ -67,16 +67,16 @@ ANN_RESULT=$(docker exec "$CONTAINER_NAME" psql -U "$DEFAULT_DB_USER" -d "$DEFAU
   LIMIT 3;
 " 2>/dev/null || echo "")
 
-# Clean up
+# clean up
 docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
 
 if [[ -n "$ANN_RESULT" ]]; then
   ROW_COUNT=$(echo "$ANN_RESULT" | grep -c "^" || true)
   if [[ "$ROW_COUNT" -ge 1 ]]; then
-    echo -e "${GREEN}[restore] PASS — ANN sanity returned $ROW_COUNT row(s). Vectors survived.${NC}"
+    echo -e "${GREEN}[restore] PASS: ANN sanity returned $ROW_COUNT row(s). Vectors survived.${NC}"
     exit 0
   fi
 fi
 
-echo -e "${RED}[restore] FAIL — ANN sanity query returned no rows. Restore is incomplete.${NC}"
+echo -e "${RED}[restore] FAIL: ANN sanity query returned no rows. Restore is incomplete.${NC}"
 exit 1

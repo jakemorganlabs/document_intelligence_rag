@@ -1,17 +1,12 @@
-/**
- * Structured logger — JSON lines to stdout (§17.1, NFR-OB-1).
- *
- * Every stage emits one line with mandatory fields; per-stage extras are
- * added as additional properties. This lets an operator reconstruct a
- * query's journey from a single grep.
- *
- * Mandatory fields:
- *   trace_id, stage, status, latency_ms
- *
- * Optional extras:
- *   query_id, model_id, tokens, similarity_top, gate_fired, input_tokens,
- *   output_tokens, total_tokens, repair_used, error
- */
+// Structured logger: JSON lines to stdout (§17.1, NFR-OB-1).
+//
+// Every stage emits one line with mandatory fields; per-stage extras are added
+// as additional properties. Lets an operator reconstruct a query's journey
+// from a single grep.
+//
+// Mandatory fields: trace_id, stage, status, latency_ms.
+// Optional extras: query_id, model_id, tokens, similarity_top, gate_fired,
+// input_tokens, output_tokens, total_tokens, repair_used, error.
 export interface LogLine {
   trace_id: string;
   stage: string;
@@ -44,10 +39,8 @@ export function resetLogSink(): void {
   logSink = defaultSink;
 }
 
-/**
- * Emit a structured log line. If trace_id is not provided, falls back to
- * a random UUID.
- */
+// Emit a structured log line. Falls back to a random UUID if trace_id is
+// not provided.
 export function logEvent(line: LogLine): void {
   const enriched = {
     ...line,

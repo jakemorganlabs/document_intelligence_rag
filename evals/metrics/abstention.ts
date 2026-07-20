@@ -1,21 +1,19 @@
-/**
- * Abstention correctness metric implementation (§18, FR-AB-4).
- *
- * Builds a confusion matrix from labeled fixtures and system outputs.
- *
- * Rows:
- *   - labeled answerable (should answer)
- *   - labeled unanswerable (should abstain)
- *   - labeled adversarial with expected_status = "answered"
- *   - labeled adversarial with expected_status = "insufficient_evidence"
- *
- * Cols:
- *   - system answered
- *   - system abstained
- *
- * FAR (False Answer Rate): answered when should abstain / total should-abstain
- * FAR-INV (False Abstention Rate): abstained when should answer / total should-answer
- */
+// Abstention correctness metric (§18, FR-AB-4).
+//
+// Builds a confusion matrix from labelled fixtures and system outputs.
+//
+// Rows:
+//   - labelled answerable (should answer)
+//   - labelled unanswerable (should abstain)
+//   - labelled adversarial with expected_status = "answered"
+//   - labelled adversarial with expected_status = "insufficient_evidence"
+//
+// Cols:
+//   - system answered
+//   - system abstained
+//
+// FAR (False Answer Rate): answered when should abstain / total should-abstain
+// FAR-INV (False Abstention Rate): abstained when should answer / total should-answer
 import type { FixtureResult } from "../types.js";
 
 export interface AbstentionResult {
@@ -24,8 +22,10 @@ export interface AbstentionResult {
   shouldAbstainTotal: number;
   correctAnswers: number;
   correctAbstentions: number;
-  falseAnswers: number; // answered when should abstain
-  falseRefusals: number; // abstained when should answer
+  // answered when should abstain
+  falseAnswers: number;
+  // abstained when should answer
+  falseRefusals: number;
   far: number; // false answer rate
   farInv: number; // false refusal rate
   perFixture: Array<{

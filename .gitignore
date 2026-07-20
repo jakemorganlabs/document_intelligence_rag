@@ -9,7 +9,7 @@ coverage/
 .vitest/
 sidecar/__pycache__/
 
-# Secret-handling additions (S06)
+# secret-handling additions (S06)
 backups/
 corpus/*
 !corpus/.gitkeep

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 #
-# scripts/smoke_prod.sh — HMAC-signed external smoke test against production.
+# scripts/smoke_prod.sh: HMAC-signed external smoke test against production.
 #
 # Usage (from any laptop with bash + curl + openssl + jq):
 #   HMAC_SECRET="your-secret" bash scripts/smoke_prod.sh
 #
 # Asserts:
-#   - Signed request → 200 + status answered + citations non-empty
-#   - Unsigned request → rejected (401)  — edge-enforcement exit criterion
+#   - Signed request -> 200 + status answered + citations non-empty
+#   - Unsigned request -> rejected (401). Edge-enforcement exit criterion.
 
 URL="${TARGET_URL:-https://docs.jakemorganlabs.dev/query}"
 HEALTH_URL="${HEALTH_URL:-https://docs.jakemorganlabs.dev/health}"
@@ -26,7 +26,7 @@ fi
 
 echo "[smoke] Target: $URL"
 
-# --- 1. Signed request should succeed ---
+# 1. Signed request should succeed
 BODY='{"question":"What is the maximum permanent link length?"}'
 TIMESTAMP=$(date +%s)
 PAYLOAD="${TIMESTAMP}${BODY}"
@@ -56,7 +56,7 @@ else
   fi
 fi
 
-# --- 2. Unsigned request should be rejected ---
+# 2. Unsigned request should be rejected
 echo "[smoke] Firing unsigned request..."
 UNSIGNED_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
   -H "Content-Type: application/json" \
@@ -70,7 +70,7 @@ else
   ERRORS=$((ERRORS + 1))
 fi
 
-# --- 3. Health check should return 200 without auth (no model call) ---
+# 3. Health check should return 200 without auth (no model call)
 echo "[smoke] Firing health check..."
 HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL")
 if [[ "$HEALTH_CODE" == "200" ]]; then

@@ -1,17 +1,11 @@
-/**
- * Embedder unit tests — batching, retry, failure semantics.
- *
- * Satisfies: FR-EM-1 (batched embedding), FR-EM-4 (un-embedded remain re-runnable).
- */
+// Embedder unit tests: batching, retry, failure semantics (FR-EM-1, FR-EM-4).
 import { describe, it, expect } from "vitest";
 import { embedTexts, getEmbeddingConfigFromEnv } from "../src/embedder.js";
 
-/**
- * CI passes a literal placeholder key when the secret is absent so other
- * pipeline config validation doesn't trip. Treat that sentinel (and the
- * obviously-missing case) as "no live key" so the network test is skipped
- * hermetically rather than timing out against the real embedding API.
- */
+// CI passes a literal placeholder key when the secret is absent so other
+// pipeline config validation does not trip. Treat that sentinel (and the
+// obviously-missing case) as "no live key" so the network test is skipped
+// hermetically rather than timing out against the real embedding API.
 const PLACEHOLDER_KEYS = new Set([
   "",
   "placeholder-skipped",

@@ -1,6 +1,6 @@
-# Production Eval Report — Closeout Slot
+# Production Eval Report - Closeout Slot
 
-> **Placeholder:** Populate after `EVAL_ENV=prod` run.
+Placeholder. Populate after the `EVAL_ENV=prod` run.
 
 Run:
 ```bash

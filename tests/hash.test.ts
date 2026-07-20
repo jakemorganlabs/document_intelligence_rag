@@ -1,8 +1,4 @@
-/**
- * Hash utility tests — SHA-256 content hash generation.
- *
- * Satisfies: FR-IG-5 (idempotency via content_hash).
- */
+// Hash utility tests: SHA-256 content hash generation (FR-IG-5).
 import { describe, it, expect } from "vitest";
 import { computeContentHash } from "../src/hash.js";
 

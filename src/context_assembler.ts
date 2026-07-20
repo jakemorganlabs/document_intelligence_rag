@@ -1,25 +1,23 @@
-/**
- * Context Assembler — builds the prompt for the grounded generator (§10.7, §11.6).
- *
- * The prompt is a single text block containing:
- * 1. System instructions (stable prefix)
- * 2. JSON schema contract
- * 3. Few-shot examples (answerable + unanswerable)
- * 4. Retrieved passages with chunk_id labels (variable suffix)
- * 5. The user question
- *
- * Note: Gemma does not expose a token-level cache-breakpoint API like some
- * providers. Prefix stability is a prompt-engineering discipline; the stable
- * portion is identical
- * on every call so the model runtime may cache it internally, but we do not rely on
- * provider-level token caching guarantees.
- */
+// Context Assembler: builds the prompt for the grounded generator (§10.7, §11.6).
+//
+// The prompt is a single text block containing:
+//   1. system instructions (stable prefix)
+//   2. JSON schema contract
+//   3. few-shot examples (answerable + unanswerable)
+//   4. retrieved passages with chunk_id labels (variable suffix)
+//   5. the user question
+//
+// Gemma does not expose a token-level cache-breakpoint API. Prefix stability is
+// a prompt-engineering discipline: the stable portion is identical on every call
+// so the runtime may cache it internally, but provider-level token-cache
+// guarantees are not relied on.
 import type { RetrievedChunk } from "../types/index.js";
 import fewShotConfig from "../config/few_shot.json" with { type: "json" };
 
 export interface AssembledPrompt {
   prompt: string;
-  stablePrefixHash: string; // for cache monitoring where supported
+  // for cache monitoring where supported
+  stablePrefixHash: string;
 }
 
 export function assemblePrompt(
@@ -93,7 +91,7 @@ function buildVariableSuffix(
 }
 
 function hashString(text: string): string {
-  // Simple FNV-1a for prefix version tracking
+  // FNV-1a for prefix version tracking
   let hash = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
     hash ^= text.charCodeAt(i);

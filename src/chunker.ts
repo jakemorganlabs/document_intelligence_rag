@@ -1,9 +1,7 @@
-/**
- * Chunker — pure, token-aware text splitter (§10.2, FR-IG-2/3).
- *
- * Uses the embedding model tokenizer (cl100k_base / text-embedding-3-small).
- * No clocks, no RNG — identical input yields identical output (FR-IG-5).
- */
+// Chunker: pure, token-aware text splitter (§10.2, FR-IG-2/3).
+//
+// Uses the embedding model tokenizer (cl100k_base / text-embedding-3-small).
+// No clocks, no RNG. Identical input yields identical output (FR-IG-5).
 import { get_encoding, type Tiktoken } from "tiktoken";
 import chunkingDefaults from "../config/chunking.json" with { type: "json" };
 import type { Chunk, ChunkInput } from "../types/index.js";

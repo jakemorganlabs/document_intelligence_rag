@@ -1,8 +1,5 @@
-/**
- * Ingest orchestrator unit tests — mock-based, no live DB required.
- *
- * Satisfies: FR-IG-1..6, FR-EM-1..4.
- */
+// Ingest orchestrator unit tests. Mock-based, no live DB (FR-IG-1..6,
+// FR-EM-1..4).
 import { describe, it, expect, vi, beforeEach, type MockedObject } from "vitest";
 import { ingestFile } from "../src/ingest.js";
 import type { PoolClient } from "pg";
@@ -38,7 +35,7 @@ function makeMockClient(): MockedObject<PoolClient> & PoolClient {
     user: "postgres",
     password: "postgres",
     ssl: false,
-    // ...mock all minimal PoolClient fields...
+    // mock all minimal PoolClient fields
   } as unknown as MockedObject<PoolClient> & PoolClient;
 }
 

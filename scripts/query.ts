@@ -1,8 +1,6 @@
-/**
- * CLI query script — run a single question through the pipeline.
- *
- * Usage: npx tsx scripts/query.ts "What is the maximum permanent link length?"
- */
+// CLI query script: run a single question through the pipeline.
+//
+// Usage: npx tsx scripts/query.ts "What is the maximum permanent link length?"
 import "dotenv/config";
 import { queryDocument } from "../src/query.js";
 

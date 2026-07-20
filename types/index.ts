@@ -1,4 +1,4 @@
-/** Shared types for MICT-RAG-002 deterministic core (S01). */
+// Shared types for the deterministic core (S01).
 
 export interface PageText {
   page: number;

@@ -1,12 +1,10 @@
-/**
- * Citation integrity metric implementation (§18, FR-CI-2).
- *
- * For each answered result: count emitted citations and verified citations.
- * Verified = chunk_id was in the retrieved surviving set AND snippet appears
- * (whitespace-normalized) in that chunk's text.
- *
- * Aggregate: verified / emitted. Expected near 1.0.
- */
+// Citation integrity metric (§18, FR-CI-2).
+//
+// For each answered result: count emitted citations and verified citations.
+// Verified means chunk_id was in the retrieved surviving set AND snippet
+// appears (whitespace-normalised) in that chunk's text.
+//
+// Aggregate: verified / emitted. Expected near 1.0.
 import { verifyAllCitations } from "../../src/citation_verifier.js";
 import type { FixtureResult } from "../types.js";
 import type { RetrievedChunk } from "../../types/index.js";

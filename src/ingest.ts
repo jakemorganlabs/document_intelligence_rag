@@ -1,23 +1,19 @@
-/**
- * Ingest orchestrator — file → extraction → chunking → embedding → persistence.
- *
- * Invariant: identical source bytes → identical document_id (idempotency via SHA-256).
- * Deliberately does NOT: version documents, queue ingest jobs, or expose a public API.
- *   (those are operator-only, local, or future scope).
- *
- * Satisfies: FR-IG-1..6, FR-EM-1..4, FR-PS-1.
- *
- * Flow:
- *   1. Read file bytes, compute SHA-256 content_hash.
- *   2. Spawn sidecar to extract page-tagged text.
- *   3. Idempotency check against documents.content_hash.
- *   4. Chunk via S01 chunker.
- *   5. Embed in batches (~100 per call), retry 3×.
- *   6. On embed exhaustion → record chunks with NULL embedding; re-runnable.
- *   7. Persist document + all chunks in single transaction.
- *   8. Corrupt/bad files rejected without aborting batch.
- *   9. Optional namespace prefix for eval isolation (S06).
- */
+// Ingest orchestrator: file -> extraction -> chunking -> embedding -> persistence.
+//
+// Invariant: identical source bytes produce identical document_id (idempotency via SHA-256).
+// Does NOT version documents, queue ingest jobs, or expose a public API. Those are
+// operator-only, local, or future scope.
+//
+// Flow:
+//   1. read file bytes, compute SHA-256 content_hash
+//   2. spawn sidecar to extract page-tagged text
+//   3. idempotency check against documents.content_hash
+//   4. chunk
+//   5. embed in batches of ~100, retry 3x
+//   6. on embed exhaustion, record chunks with NULL embedding (re-runnable)
+//   7. persist document + chunks in a single transaction
+//   8. corrupt files are rejected without aborting the batch
+//   9. optional namespace prefix for eval isolation
 import { readFile } from "node:fs/promises";
 import type { PoolClient } from "pg";
 import { chunkDocument } from "./chunker.js";
@@ -30,14 +26,12 @@ import type { ChunkInput, ChunkRecord } from "../types/index.js";
 import { logEvent } from "./log.js";
 
 export interface IngestOptions {
-  /** If true, replace existing document when hash matches (default: skip). */
+  // If true, replace existing document when hash matches. Default: skip.
   replaceOnReingest?: boolean;
-  /** Override embedding config per-call. */
+  // Override embedding config per-call.
   embedConfig?: Parameters<typeof embedTexts>[1];
-  /**
-   * Namespace prefix for document IDs (e.g. "eval").
-   * Used in EVAL_ENV=prod to isolate eval documents from the production corpus.
-   */
+  // Namespace prefix for document IDs (e.g. "eval"). Used in EVAL_ENV=prod to
+  // keep eval documents out of the production corpus.
   namespace?: string;
 }
 
@@ -52,11 +46,9 @@ export interface IngestResult {
   reason?: string;
 }
 
-/**
- * Ingest a single file (PDF, .txt, .md).
- * Returns a result summary; never throws on known error conditions
- * (corrupt files are returned with status "failed").
- */
+// Ingest a single file (PDF, .txt, .md).
+// Returns a result summary. Never throws on known error conditions;
+// corrupt files come back as status "failed".
 export async function ingestFile(
   filePath: string,
   client: PoolClient,
@@ -69,7 +61,7 @@ export async function ingestFile(
 
   logEvent({ trace_id: traceId, stage: "ingest", status: "start", query_id: filePath });
 
-  /* ---------- Step 1: Read bytes & hash ---------- */
+  // step 1: read bytes & hash
   let buffer: Buffer;
   try {
     buffer = await readFile(filePath);
@@ -98,7 +90,7 @@ export async function ingestFile(
   const contentHash = computeContentHash(buffer);
   logEvent({ trace_id: traceId, stage: "ingest_hash", status: "success" });
 
-  /* ---------- Step 2: Extract text via sidecar ---------- */
+  // step 2: extract text via sidecar
   try {
     logEvent({ trace_id: traceId, stage: "ingest_extract", status: "start" });
     extraction = await extractFile(filePath);
@@ -125,7 +117,7 @@ export async function ingestFile(
     };
   }
 
-  /* ---------- Step 3: Idempotency check ---------- */
+  // step 3: idempotency check
   const idem = await checkIdempotency(contentHash, client);
   if (idem.action === "skip" && !options.replaceOnReingest) {
     logEvent({ trace_id: traceId, stage: "ingest_idempotency", status: "success", error: "skipped" });
@@ -141,7 +133,7 @@ export async function ingestFile(
     };
   }
 
-  /* ---------- Step 4: Chunk ---------- */
+  // step 4: chunk
   logEvent({ trace_id: traceId, stage: "ingest_chunk", status: "start" });
   const namespacePrefix = options.namespace ? `${options.namespace}_` : "";
   const chunkInput: ChunkInput = {
@@ -157,7 +149,7 @@ export async function ingestFile(
   const chunks = chunkDocument(chunkInput);
   logEvent({ trace_id: traceId, stage: "ingest_chunk", status: "success", total_tokens: chunks.reduce((sum, c) => sum + c.token_count, 0) });
 
-  /* ---------- Step 5: Embed ---------- */
+  // step 5: embed
   logEvent({ trace_id: traceId, stage: "ingest_embed", status: "start", total_tokens: chunks.length });
   const textsToEmbed = chunks.map((c) => c.text);
   const embedConfig = options.embedConfig ?? getEmbeddingConfigFromEnv();
@@ -175,7 +167,7 @@ export async function ingestFile(
       failedTexts.add(f);
     }
   } else if (textsToEmbed.length > 0) {
-    // No API key — record everything as un-embedded
+    // no API key: record everything as un-embedded
     for (const t of textsToEmbed) failedTexts.add(t);
   }
 
@@ -187,7 +179,7 @@ export async function ingestFile(
     error: failedTexts.size > 0 ? `${failedTexts.size} chunks failed embedding` : undefined,
   });
 
-  /* ---------- Step 6: Build ChunkRecords ---------- */
+  // step 6: build ChunkRecords
   const chunkRecords: ChunkRecord[] = chunks.map((c) => {
     const isUnembedded = failedTexts.has(c.text);
     const emb = isUnembedded ? null : (embeddingByText.get(c.text) ?? null);
@@ -210,7 +202,7 @@ export async function ingestFile(
     };
   });
 
-  /* ---------- Step 7: Persist ---------- */
+  // step 7: persist
   logEvent({ trace_id: traceId, stage: "ingest_persist", status: "start" });
   let documentId: string;
   let finalStatus: IngestResult["status"] = "indexed";

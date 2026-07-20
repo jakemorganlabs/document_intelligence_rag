@@ -1,10 +1,7 @@
-/**
- * Vector store writer — transactional upsert of documents + chunks.
- *
- * Satisfies: FR-PS-1 (persistence), FR-EM-3 (ANN index).
- * Wraps document row + all chunk rows in a single transaction.
- * On failure, rolls back — nothing partial remains.
- */
+// Vector store writer: transactional upsert of documents + chunks.
+//
+// Wraps the document row and all chunk rows in a single transaction. On
+// failure, rolls back. Nothing partial remains.
 import type { PoolClient } from "pg";
 import type { ChunkRecord } from "../types/index.js";
 import { insertDocument, updateDocumentStatus, insertChunks, deleteChunksByDocument } from "./db.js";
@@ -23,9 +20,7 @@ export interface PersistResult {
   chunksInserted: number;
 }
 
-/**
- * Insert a document and all its chunks in one transaction.
- */
+// Insert a document and all its chunks in one transaction.
 export async function persistIngest(
   record: IngestRecord,
   client: PoolClient
@@ -62,10 +57,8 @@ export async function persistIngest(
   }
 }
 
-/**
- * Replace an existing document: delete old chunks, insert new ones,
- * update status. All in one transaction.
- */
+// Replace an existing document: delete old chunks, insert new ones, update
+// status. All in one transaction.
 export async function replaceDocument(
   existingDocumentId: string,
   record: IngestRecord,
@@ -99,10 +92,8 @@ export async function replaceDocument(
   }
 }
 
-/**
- * Route a persistent failure into the dead-letter queue.
- * Also triggers a Slack alert (best-effort; does not block on alert failure).
- */
+// Route a persistent failure into the dead-letter queue. Also fires a Slack
+// alert. Best-effort; does not block on alert failure.
 export async function routeToDeadLetter(
   client: PoolClient,
   opts: {
@@ -114,7 +105,7 @@ export async function routeToDeadLetter(
   }
 ): Promise<void> {
   await insertDeadLetter(client, opts);
-  // Best-effort alert; fire-and-forget
+  // best-effort alert, fire-and-forget
   sendSlackAlert({
     stage: opts.stage,
     error: opts.error,

@@ -17,7 +17,8 @@
 > }
 > ```
 
-**Verdict:** Citation was verified — the exact snippet appears verbatim in chunk `c-12` of document `01_horizontal_cabling.pdf`, page 4. The answer is grounded.
+**Verdict:** Citation verified. The exact snippet appears verbatim in chunk `c-12` of document `01_horizontal_cabling.pdf`, page 4. The answer is grounded.
 
 ---
-*Synthetic / redacted — this is a canonical example from the S04 eval fixtures showing correct citation behaviour. Real production transcripts replace this placeholder after the closeout commit.*
+
+Synthetic, redacted. Canonical example from the S04 eval fixtures showing correct citation behaviour. Real production transcripts replace this placeholder after the closeout commit.

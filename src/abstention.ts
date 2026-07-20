@@ -1,10 +1,8 @@
-/**
- * Abstention decision — two-gate deterministic logic (§11.5, FR-AB-1..3).
- *
- * Gate 1 (pre-generation): relevance floor — no model call if nothing survives.
- * Gate 2 (post-generation): cross-field rules + citation verification.
- * Repair: exactly one corrective attempt, then downgrade to insufficient evidence.
- */
+// Abstention decision: two-gate deterministic logic (§11.5, FR-AB-1..3).
+//
+// Gate 1 (pre-generation): relevance floor. No model call if nothing survives.
+// Gate 2 (post-generation): cross-field rules + citation verification.
+// Repair: exactly one corrective attempt, then downgrade to insufficient evidence.
 import { verifyAllCitations } from "./citation_verifier.js";
 import {
   INSUFFICIENT_EVIDENCE_MESSAGE,

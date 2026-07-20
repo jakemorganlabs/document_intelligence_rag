@@ -1,8 +1,4 @@
-/**
- * PDF/Text extractor client — spawns the Python sidecar.
- *
- * Satisfies: FR-IG-1 (document ingestion), FR-IG-2 (page-tagging).
- */
+// PDF/Text extractor client: spawns the Python sidecar (FR-IG-1, FR-IG-2).
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 
@@ -25,12 +21,10 @@ const SIDECAR_PATH = resolve(
   "extract.py"
 );
 
-/**
- * Extract text from a file (PDF, .txt, .md) by spawning the Python sidecar.
- * Returns page-tagged text with character offsets.
- *
- * @param filePath Absolute or relative path to the file.
- */
+// Extract text from a file (PDF, .txt, .md) by spawning the Python sidecar.
+// Returns page-tagged text with character offsets.
+//
+// filePath: absolute or relative path to the file.
 export function extractFile(filePath: string): Promise<ExtractionResult> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn("python3", [SIDECAR_PATH, filePath]);

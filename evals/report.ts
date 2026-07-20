@@ -1,9 +1,6 @@
-/**
- * Markdown report generator for MICT-RAG-002 S04 eval suite.
- *
- * Reads eval results, computes metrics, and writes a human-readable
- * markdown report suitable for CI artifacts and portfolio display.
- */
+// Markdown report generator for the eval suite. Reads eval results, computes
+// metrics, and writes a markdown report suitable for CI artifacts and
+// portfolio display.
 import type {
   MetricSummary,
   CategoryBreakdown,
@@ -64,7 +61,7 @@ function buildReport(
     ...raw.adversarial,
   ];
 
-  // Metrics
+  // metrics
   const recall = computeRecallAtK(labels, raw.answerable, thresholds.recall_at_k.k);
   const abstention = computeAbstentionCorrectness(allResults);
   const citation = computeCitationIntegrity(
@@ -109,7 +106,7 @@ function buildReport(
     },
   ];
 
-  // Category breakdowns
+  // category breakdowns
   const categoryMap = new Map<string, CategoryBreakdown>();
 
   function ensureCategory(name: string): CategoryBreakdown {
@@ -125,7 +122,7 @@ function buildReport(
     return categoryMap.get(name)!;
   }
 
-  // Process adversarial
+  // process adversarial
   for (const r of raw.adversarial) {
     const cat = ensureCategory(r.category);
     cat.total++;
@@ -142,7 +139,7 @@ function buildReport(
     });
   }
 
-  // Process answerable by category
+  // process answerable by category
   const labelMap = new Map(labels.map((l) => [l.id, l]));
   for (const r of raw.answerable) {
     const label = labelMap.get(r.labelId);
@@ -162,7 +159,7 @@ function buildReport(
     });
   }
 
-  // Process unanswerable
+  // process unanswerable
   const unansCat = ensureCategory("unanswerable");
   for (const r of raw.unanswerable) {
     unansCat.total++;
@@ -282,7 +279,7 @@ function renderMarkdown(report: EvalReport): string {
   return lines.join("\n");
 }
 
-/* ---------- CLI ---------- */
+// CLI
 
 async function main() {
   const raw = await loadRawResults();

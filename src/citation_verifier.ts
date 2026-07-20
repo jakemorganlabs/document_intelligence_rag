@@ -1,21 +1,20 @@
-/**
- * Citation Verifier — deterministic grounding gate (§10.9, FR-CI-2).
- *
- * Invariant: a citation is verified only if its snippet is a verbatim (whitespace-normalized)
- *   substring of the retrieved chunk text and the chunk_id is in the retrieved set.
- * Deliberately does NOT: fuzzy-match, paraphrase-check, or tolerate missing chunk_ids.
- *   (those would weaken the grounding guarantee).
- *
- * Normalization rules (applied in order):
- * 1. Unicode NFC normalization
- * 2. Fold smart single/double quotes to ASCII straight quotes
- * 3. Replace NBSP and other unicode space variants with ASCII space
- * 4. Collapse all whitespace runs (tabs, newlines, form feeds) to a single space
- * 5. Trim leading/trailing whitespace
- *
- * These rules are tuned for PDF-extracted text (dirty whitespace, ligatures, smart quotes).
- * They intentionally do NOT strip punctuation or alter case — only whitespace and quote folding.
- */
+// Citation Verifier: deterministic grounding gate (§10.9, FR-CI-2).
+//
+// A citation is verified only if its snippet is a verbatim (whitespace-normalised)
+// substring of the retrieved chunk text and the chunk_id is in the retrieved set.
+// Does NOT fuzzy-match, paraphrase-check, or tolerate missing chunk_ids. Any of
+// those would weaken the grounding guarantee.
+//
+// Normalisation rules, applied in order:
+//   1. Unicode NFC normalisation
+//   2. fold smart single/double quotes to ASCII straight quotes
+//   3. replace NBSP and other unicode space variants with ASCII space
+//   4. collapse all whitespace runs (tabs, newlines, form feeds) to a single space
+//   5. trim leading/trailing whitespace
+//
+// Tuned for PDF-extracted text (dirty whitespace, ligatures, smart quotes).
+// Intentionally does not strip punctuation or alter case, only whitespace and
+// quote folding.
 import type {
   Citation,
   CitationVerificationResult,

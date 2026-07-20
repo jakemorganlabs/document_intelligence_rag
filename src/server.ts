@@ -1,17 +1,15 @@
-/**
- * Query endpoint — minimal HTTP server (§5.5, FR-ER-3, NFR-SE-1).
- *
- * POST /query
- * GET  /health  (no-op, checks DB connectivity, no model call)
- *
- * Headers: X-Timestamp, X-Signature
- * Body: { "question": "string" }
- * Returns: { status, answer, citations, audit_id }
- *
- * Authentication: HMAC-SHA256 over (timestamp || body).
- * No open inbound ports in production; exposed via encrypted tunnel (§19).
- * HMAC secret is read from $HMAC_SECRET only — never a literal, never a default.
- */
+// Query endpoint: minimal HTTP server (§5.5, FR-ER-3, NFR-SE-1).
+//
+// POST /query
+// GET  /health  (no-op, DB connectivity probe, no model call)
+//
+// Headers: X-Timestamp, X-Signature
+// Body: { "question": "string" }
+// Returns: { status, answer, citations, audit_id }
+//
+// Auth: HMAC-SHA256 over (timestamp || body).
+// No open inbound ports in production. Exposed through an encrypted tunnel (§19).
+// HMAC secret is read from $HMAC_SECRET only. Never a literal, never a default.
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { queryDocument } from "./query.js";
 import { verifyHmac } from "./auth.js";
@@ -29,7 +27,7 @@ export function buildServer() {
   return createServer(async (req: IncomingMessage, res: ServerResponse) => {
     res.setHeader("Content-Type", "application/json");
 
-    /* ---------- Health check (no-auth, no-model) ---------- */
+    // health check: no auth, no model call
     if (req.method === "GET" && req.url === "/health") {
       try {
         const client = await getClient();
@@ -45,7 +43,7 @@ export function buildServer() {
       return;
     }
 
-    /* ---------- Only /query is a supported POST path ---------- */
+    // only /query is a supported POST path
     if (req.method !== "POST" || req.url !== "/query") {
       res.writeHead(404);
       res.end(JSON.stringify({ error: "Not found" }));
@@ -57,7 +55,7 @@ export function buildServer() {
       body += chunk;
     }
 
-    /* ---------- Auth gate (S05) — HMAC_SECRET only ---------- */
+    // auth gate: HMAC_SECRET only
     const secret = process.env.HMAC_SECRET ?? "";
     if (secret) {
       const timestamp = getHeader(req, "X-Timestamp");

@@ -1,15 +1,13 @@
 #!/usr/bin/env tsx
-/**
- * CLI entry point for single-file or batch ingestion.
- *
- * Usage:
- *   npx tsx scripts/ingest.ts <file_or_dir> [--replace]
- *
- * Examples:
- *   npx tsx scripts/ingest.ts fixtures/smoke_pdfs/smoke_01_guidelines.pdf
- *   npx tsx scripts/ingest.ts fixtures/smoke_pdfs/
- *   npx tsx scripts/ingest.ts fixtures/smoke_pdfs/ --replace
- */
+// CLI entry point for single-file or batch ingestion.
+//
+// Usage:
+//   npx tsx scripts/ingest.ts <file_or_dir> [--replace]
+//
+// Examples:
+//   npx tsx scripts/ingest.ts fixtures/smoke_pdfs/smoke_01_guidelines.pdf
+//   npx tsx scripts/ingest.ts fixtures/smoke_pdfs/
+//   npx tsx scripts/ingest.ts fixtures/smoke_pdfs/ --replace
 import "dotenv/config";
 import { readdir, stat } from "node:fs/promises";
 import { resolve, extname } from "node:path";
@@ -56,7 +54,7 @@ async function main() {
       results.push(result);
     }
 
-    /* ---------- Summary ---------- */
+    // summary
     console.log("\n" + "=".repeat(60));
     console.log("INGEST SUMMARY");
     console.log("=".repeat(60));

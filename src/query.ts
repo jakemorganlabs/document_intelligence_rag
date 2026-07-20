@@ -1,17 +1,15 @@
-/**
- * Query Pipeline — end-to-end query handler (§12.B).
- *
- * Flow:
- *  1. Retrieve chunks (embed query + ANN search)
- *  2. Pre-generation relevance gate (abstain if nothing ≥ floor)
- *  3. Assemble prompt
- *  4. Call Gemma generator (JSON mode + responseSchema)
- *  5. Schema validate (ajv)
- *  6. Citation gate (chunk-in-set + snippet-present)
- *  7. Repair loop (max 1 attempt), then downgrade
- *  8. Persist audit
- *  9. Return GroundedAnswer
- */
+// Query Pipeline: end-to-end query handler (§12.B).
+//
+// Flow:
+//  1. retrieve chunks (embed query + ANN search)
+//  2. pre-generation relevance gate (abstain if nothing >= floor)
+//  3. assemble prompt
+//  4. call Gemma generator (JSON mode + responseSchema)
+//  5. schema validate (ajv)
+//  6. citation gate (chunk-in-set + snippet-present)
+//  7. repair loop (max 1 attempt), then downgrade
+//  8. persist audit
+//  9. return GroundedAnswer
 import { retrieveChunks } from "./retriever.js";
 import {
   preGenerationGate,
@@ -55,7 +53,7 @@ export async function queryDocument(
   const ownClient = !opts.client;
   const client = opts.client ?? (await getClient());
 
-  // --- Step 1: Retrieve (embed + ANN) ---
+  // step 1: retrieve (embed + ANN)
   logEvent({ trace_id: traceId, stage: "retrieve", status: "start", query_id: opts.question });
   const retrieveStart = performance.now();
   const { chunks: retrieved, topScore } = await retrieveChunks({
@@ -66,7 +64,7 @@ export async function queryDocument(
   const retrieveMs = Math.round(performance.now() - retrieveStart);
   logEvent({ trace_id: traceId, stage: "retrieve", status: "success", latency_ms: retrieveMs, similarity_top: topScore });
 
-  // --- Step 2: Pre-generation relevance gate ---
+  // step 2: pre-generation relevance gate
   logEvent({ trace_id: traceId, stage: "pre_gen_gate", status: "start" });
   const gate1 = preGenerationGate(retrieved);
   if (!gate1.proceed) {
@@ -96,12 +94,12 @@ export async function queryDocument(
 
   const surviving = gate1.surviving;
 
-  // --- Step 3: Assemble prompt ---
+  // step 3: assemble prompt
   logEvent({ trace_id: traceId, stage: "assemble_prompt", status: "start" });
   const { prompt } = assemblePrompt(surviving, opts.question);
   logEvent({ trace_id: traceId, stage: "assemble_prompt", status: "success" });
 
-  // --- Step 4: Generate ---
+  // step 4: generate
   logEvent({ trace_id: traceId, stage: "generate", status: "start", model_id: generationConfig.model_id });
   const genStart = performance.now();
   let genResult = await generateGroundedAnswer({ prompt });
@@ -121,7 +119,7 @@ export async function queryDocument(
   let repairUsed = false;
   let currentAnswer = genResult.answer;
 
-  // --- Step 5: Schema validate ---
+  // step 5: schema validate
   logEvent({ trace_id: traceId, stage: "schema_validate", status: "start" });
   const schemaValid = validateGroundedAnswer(currentAnswer);
 
@@ -150,7 +148,7 @@ export async function queryDocument(
     logEvent({ trace_id: traceId, stage: "schema_validate", status: "success" });
   }
 
-  // --- Step 6+7: Citation gate with optional repair ---
+  // step 6+7: citation gate with optional repair
   logEvent({ trace_id: traceId, stage: "citation_verify", status: "start" });
   const firstPost = validatePostGeneration(currentAnswer, surviving);
 
@@ -166,7 +164,7 @@ export async function queryDocument(
     finalGate = firstPost.gate;
   } else {
     logEvent({ trace_id: traceId, stage: "citation_verify", status: "failure", error: firstPost.reasons.join("; ") });
-    // citation gate fired "repair" — attempt repair once
+    // citation gate fired "repair": attempt once
     if (!repairUsed) {
       const repaired = await generateRepair({
         prompt,
@@ -201,7 +199,7 @@ export async function queryDocument(
         finalGate = "citation";
       }
     } else {
-      // Already used repair for schema; downgrade
+      // repair already used on schema; downgrade
       logEvent({ trace_id: traceId, stage: "citation_verify", status: "abstain", gate_fired: "citation", error: "repair_already_used" });
       finalAnswer = makeInsufficientEvidence();
       finalGate = "citation";
@@ -210,7 +208,7 @@ export async function queryDocument(
 
   const totalLatency = Math.round(performance.now() - startTotal);
 
-  // --- Step 8: Audit ---
+  // step 8: audit
   logEvent({ trace_id: traceId, stage: "persist_audit", status: "start", latency_ms: totalLatency });
   const audit = await writeAudit(client, {
     question: opts.question,
@@ -235,7 +233,7 @@ export async function queryDocument(
   return { answer: finalAnswer, audit, retrieved };
 }
 
-// --- helper: write audit row ---
+// helper: write an audit row
 
 interface AuditWriteOpts {
   question: string;

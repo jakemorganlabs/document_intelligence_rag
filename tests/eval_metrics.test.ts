@@ -220,7 +220,7 @@ describe("eval metrics", () => {
       ];
 
       const c = computeCitationIntegrity(results);
-      // Note: only answered results are counted; no answered results -> integrity = 1 by convention
+      // only answered results are counted; no answered results -> integrity = 1 by convention
       expect(c.integrity).toBe(1);
       expect(c.totalAnswered).toBe(0);
     });

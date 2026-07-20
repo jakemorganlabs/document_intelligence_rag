@@ -1,17 +1,15 @@
 #!/usr/bin/env tsx
-/**
- * Eval runner — ingest eval corpus, run all labeled fixtures, collect results.
- *
- * Usage:
- *   npx tsx evals/run.ts [--clean]         # local mode
- *   EVAL_ENV=prod npx tsx evals/run.ts     # production mode (requires HMAC_SECRET)
- *
- * Production mode:
- *   - Connects to DATABASE_URL (must point at prod DB).
- *   - Ingests eval corpus with `eval_` document-id prefix (non-contamination).
- *   - Calls the live public URL with HMAC-signed requests.
- *   - After the run, asserts no non-eval_ rows exist in the documents table.
- */
+// Eval runner: ingest eval corpus, run all labelled fixtures, collect results.
+//
+// Usage:
+//   npx tsx evals/run.ts [--clean]         # local mode
+//   EVAL_ENV=prod npx tsx evals/run.ts     # production mode (requires HMAC_SECRET)
+//
+// Production mode:
+//   - connects to DATABASE_URL (must point at the prod DB)
+//   - ingests eval corpus with an `eval_` document-id prefix (non-contamination)
+//   - calls the live public URL with HMAC-signed requests
+//   - after the run, asserts no non-eval_ rows exist in the documents table
 import "dotenv/config";
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -36,7 +34,7 @@ const QUESTIONS_DIR = resolve(__dirname, "../fixtures/eval_corpus/questions");
 const IS_PROD = process.env.EVAL_ENV === "prod";
 const PROD_URL = process.env.PROD_QUERY_URL ?? "https://docs.jakemorganlabs.dev/query";
 
-/* ---------- helpers ---------- */
+// helpers
 
 async function loadFixtures<T>(filename: string): Promise<T[]> {
   const raw = await readFile(join(QUESTIONS_DIR, filename), "utf-8");
@@ -181,7 +179,7 @@ async function runProdFixture(
   }
 }
 
-/* ---------- public API ---------- */
+// public API
 
 export interface EvalRunResult {
   answerableResults: FixtureResult[];
@@ -198,7 +196,7 @@ export async function runEvals(
   if (!options.skipIngest) {
     const docCount = await client.query("SELECT COUNT(*) AS n FROM documents");
     if (Number(docCount.rows[0]?.n ?? 0) === 0) {
-      // In prod mode, namespace eval docs with "eval" prefix
+      // in prod mode, namespace eval docs with "eval" prefix
       await ingestCorpus(client, IS_PROD ? "eval" : undefined);
     } else {
       console.log("[eval] Documents already present; skip ingest (use --clean to force refresh).");
@@ -244,7 +242,7 @@ export async function runEvals(
   return { answerableResults, unanswerableResults, adversarialResults };
 }
 
-/* ---------- CLI ---------- */
+// CLI
 
 async function main() {
   const cleanFlag = process.argv.includes("--clean");
@@ -266,7 +264,7 @@ async function main() {
 
   const results = await runEvals();
 
-  // Corruption check in prod mode: assert no non-eval_ documents
+  // corruption check in prod mode: assert no non-eval_ documents
   if (IS_PROD) {
     console.log("[eval] Verifying corpus non-contamination...");
     const client = await getClient();
@@ -283,7 +281,7 @@ async function main() {
     console.log("[eval] Corpus non-contamination verified.");
   }
 
-  // Save raw results
+  // save raw results
   const resultsFile = IS_PROD ? "results_prod.json" : "results.json";
   const resultsPath = resolve(__dirname, resultsFile);
   const resultsJson = JSON.stringify(

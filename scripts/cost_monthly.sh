@@ -5,8 +5,8 @@ set -euo pipefail
 #
 # Queries query_audit for the last 30 days, applies the versioned price
 # config, and reports total cost, per-query average, and cache savings
-# info (Gemma does not support explicit prompt caching, so savings rate
-# is reported as "N/A — Gemma prefix stability is prompt-engineering only").
+# info. Gemma does not support explicit prompt caching, so the savings
+# rate is reported as "N/A" (prefix stability is prompt-engineering only).
 #
 # Usage:
 #   bash scripts/cost_monthly.sh
@@ -44,7 +44,7 @@ echo " Monthly Cost Report (last ${DAYS} days)"
 echo " Pricing effective: ${EFF_DATE:-unknown}"
 echo "=============================================="
 
-# --- Query token counts from query_audit ---
+# query token counts from query_audit
 SQL="
 SELECT
     COUNT(*)::int AS query_count,
@@ -63,16 +63,15 @@ TOTAL_INPUT=$(echo "$RESULT" | cut -d',' -f2)
 TOTAL_OUTPUT=$(echo "$RESULT" | cut -d',' -f3)
 TOTAL_TOKENS=$(echo "$RESULT" | cut -d',' -f4)
 
-# --- Pull prices from config ---
+# pull prices from config
 GEN_INPUT_PRICE=$(jq -r '.providers[] | select(.provider=="google") | .input_price_per_mtok // 0' "$PRICING")
 GEN_OUTPUT_PRICE=$(jq -r '.providers[] | select(.provider=="google") | .output_price_per_mtok // 0' "$PRICING")
 EMBED_PRICE=$(jq -r '.providers[] | select(.provider=="openai") | .input_price_per_mtok // 0' "$PRICING")
 
-# --- Compute costs ---
-# Convert tokens -> millions
+# compute costs (tokens -> millions)
 gen_input_cost=$(echo "$TOTAL_INPUT * $GEN_INPUT_PRICE / 1000000" | bc -l 2>/dev/null || echo "0")
 gen_output_cost=$(echo "$TOTAL_OUTPUT * $GEN_OUTPUT_PRICE / 1000000" | bc -l 2>/dev/null || echo "0")
-# Embedding cost is harder to derive purely from query_audit because embedding tokens
+# embedding cost is harder to derive from query_audit because embedding tokens
 # are not recorded there (they're an ingest-time cost). For a query-only report
 # we focus on generation costs and note embedding is ingest-time.
 total_cost=$(echo "$gen_input_cost + $gen_output_cost" | bc -l 2>/dev/null || echo "0")
@@ -97,7 +96,7 @@ echo "  Total generation cost:      \$$(printf '%.4f' "$total_cost")"
 echo ""
 echo "Per-query average:          \$$(printf '%.4f' "$avg_cost")"
 echo ""
-echo "Cache savings:              N/A (Gemma does not expose prompt-caching API)"
+echo "Cache savings:              N/A (Gemma has no prompt-caching API)"
 echo ""
 echo "Embedding cost:             Not captured here (ingest-time; see embed logs)"
 echo "=============================================="

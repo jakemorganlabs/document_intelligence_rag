@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 #
-# deploy/cron/pg_dump.sh — Nightly pg_dump of the pgvector database.
+# deploy/cron/pg_dump.sh: nightly pg_dump of the pgvector database.
 #
-# Usage: cron entry (run daily at 02:00 UTC):
+# Usage: cron entry, run daily at 02:00 UTC:
 #   0 2 * * * /bin/bash /opt/docintel/deploy/cron/pg_dump.sh >> /var/log/pg_dump.log 2>&1
 #
 # Rotates backups older than 7 days automatically.
@@ -18,8 +18,8 @@ mkdir -p "$BACKUP_DIR"
 DATE_TAG=$(date +%F)
 DUMP_FILE="$BACKUP_DIR/rag_${DATE_TAG}.dump"
 
-# pg_dump in custom format (-Fc) — vector columns included by default
-echo "[$(date -Iseconds)] Starting backup of $DB_NAME → $DUMP_FILE"
+# pg_dump in custom format (-Fc). vector columns included by default
+echo "[$(date -Iseconds)] Starting backup of $DB_NAME -> $DUMP_FILE"
 pg_dump -Fc -d "$DB_NAME" -U "$DB_USER" -f "$DUMP_FILE"
 
 # Rotate: remove dumps older than RETENTION_DAYS

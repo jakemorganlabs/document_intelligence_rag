@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/hooks/pre-commit — run secret gate before every commit
+# scripts/hooks/pre-commit: run secret gate before every commit
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

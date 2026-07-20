@@ -1,15 +1,12 @@
 #!/usr/bin/env tsx
-/**
- * Re-run embeddings for chunks that previously failed or were un-embedded.
- *
- * Usage:
- *   npx tsx scripts/embed_pending.ts [--limit N]
- *
- * Finds chunks where `embedding IS NULL` and `embed_model IS NULL`,
- * batches them, calls the embedding API, and updates the rows.
- *
- * Satisfies: FR-EM-4 (un-embedded chunks remain re-runnable).
- */
+// Re-run embeddings for chunks that previously failed or were un-embedded
+// (FR-EM-4).
+//
+// Usage:
+//   npx tsx scripts/embed_pending.ts [--limit N]
+//
+// Finds chunks where `embedding IS NULL` and `embed_model IS NULL`, batches
+// them, calls the embedding API, and updates the rows.
 import "dotenv/config";
 import { getClient, findPendingChunks, updateChunkEmbedding } from "../src/db.js";
 import { embedTexts, getEmbeddingConfigFromEnv } from "../src/embedder.js";
@@ -39,7 +36,7 @@ async function main() {
     console.log(`Embedding with model: ${config.model}`);
     const result = await embedTexts(texts, config);
 
-    /* Map embeddings back to chunk IDs */
+    // map embeddings back to chunk IDs
     const textToEmbedding = new Map<string, number[]>();
     for (const s of result.succeeded) {
       if (!textToEmbedding.has(s.text)) {

@@ -1,11 +1,8 @@
-/**
- * Generation model configuration (§15, FR-AN-5, NFR-MA-2).
- *
- * This system uses Google Gemma for grounded answer generation, hosted
- * exclusively on DeepInfra. The runtime provider is "deepinfra"; the model
- * remains the Gemma identifier pinned below. No Anthropic, Claude, or Haiku
- * models are permitted.
- */
+// Generation model configuration (§15, FR-AN-5, NFR-MA-2).
+//
+// Generation uses Google Gemma hosted on DeepInfra. The runtime provider is
+// "deepinfra"; the model is the Gemma identifier pinned below. No Anthropic,
+// Claude, or Haiku models are permitted.
 import generationDefaults from "../config/generation.json" with { type: "json" };
 
 export interface GenerationConfig {
@@ -17,13 +14,13 @@ export interface GenerationConfig {
   structured_output: "json_mode";
 }
 
-/** Pinned generation model — Google Gemma via DeepInfra. */
+// Pinned generation model: Google Gemma via DeepInfra.
 export const GENERATION_MODEL_ID = "google/gemma-4-26B-A4B-it" as const;
 
-/** Valid provider ids. */
+// Valid provider ids.
 export const VALID_GENERATION_PROVIDERS = ["deepinfra"] as const;
 
-/** Valid model id prefixes. */
+// Valid model id prefixes.
 export const VALID_GENERATION_MODEL_PREFIXES = ["google/gemma"] as const;
 
 export function loadGenerationConfig(

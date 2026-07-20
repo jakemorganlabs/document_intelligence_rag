@@ -1,6 +1,6 @@
-# Restore Test Transcript — Closeout Slot
+# Restore Test Transcript - Closeout Slot
 
-> **Placeholder:** Populate after running `bash deploy/restore.sh`.
+Placeholder. Populate after running `bash deploy/restore.sh`.
 
 Expected contents:
 ```
@@ -8,5 +8,5 @@ Expected contents:
 [restore] Starting scratch pgvector/pgvector:pg16...
 [restore] Restoring dump...
 [restore] Dump restored. Running ANN sanity query...
-[restore] PASS — ANN sanity returned 3 row(s). Vectors survived.
+[restore] PASS: ANN sanity returned 3 row(s). Vectors survived.
 ```

@@ -1,4 +1,4 @@
-# Makefile — MICT-RAG-002 S06 Deployment Commands
+# Makefile: MICT-RAG-002 S06 deployment commands.
 # Usage: make <target>
 
 .PHONY: hooks gate up down logs migrate backup restore-test reingest smoke eval-prod
@@ -12,7 +12,7 @@ hooks:
 gate:
 	bash scripts/secret_gate.sh
 
-# --- Local development ---
+# local development
 
 up:
 	docker compose up -d
@@ -23,12 +23,12 @@ down:
 logs:
 	docker compose logs -f
 
-# --- Database ---
+# database
 
 migrate:
 	npx tsx scripts/migrate.ts
 
-# --- Backup / restore / re-ingest ---
+# backup / restore / re-ingest
 
 backup:
 	bash deploy/cron/pg_dump.sh
@@ -39,7 +39,7 @@ restore-test:
 reingest:
 	bash deploy/reingest.sh
 
-# --- Smoke & eval ---
+# smoke & eval
 
 smoke:
 	bash scripts/smoke_prod.sh

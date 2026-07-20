@@ -1,12 +1,8 @@
-/**
- * Embedder — batched OpenAI embedding API with retry.
- *
- * Satisfies: FR-EM-1 (batched embedding), FR-EM-2 (model+dims recorded),
- *            FR-EM-3 (ANN index), FR-EM-4 (un-embedded remain re-runnable).
- *
- * Three-attempt retry with exponential backoff (2s / 4s / 8s).
- * On exhaustion, returns the affected chunks for caller to record as un-embedded.
- */
+// Embedder: batched OpenAI embedding API with retry (FR-EM-1..4).
+//
+// Three-attempt retry with exponential backoff (2s / 4s / 8s). On exhaustion,
+// returns the affected chunks so the caller can record them as un-embedded and
+// re-run later (FR-EM-4).
 import OpenAI from "openai";
 
 export interface EmbeddingConfig {
@@ -28,7 +24,8 @@ export interface EmbeddedChunk {
 
 export interface EmbedResult {
   succeeded: EmbeddedChunk[];
-  failed: string[]; // texts that failed after retries
+  // texts that failed after retries
+  failed: string[];
 }
 
 const DEFAULT_CONFIG: EmbeddingConfig = {
@@ -48,10 +45,8 @@ function buildClient(apiKey: string): OpenAI {
   return new OpenAI({ apiKey });
 }
 
-/**
- * Embed a batch of text strings.
- * Returns succeeded embeddings and any texts that ultimately failed.
- */
+// Embed a batch of text strings. Returns succeeded embeddings and any texts
+// that ultimately failed.
 export async function embedTexts(
   texts: string[],
   config?: Partial<EmbeddingConfig>

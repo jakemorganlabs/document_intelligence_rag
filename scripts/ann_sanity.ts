@@ -1,16 +1,14 @@
 #!/usr/bin/env tsx
-/**
- * ANN sanity check — top-k cosine similarity timing.
- *
- * Usage:
- *   npx tsx scripts/ann_sanity.ts
- *
- * Reports whether the top-K query completes in <100ms.
- */
+// ANN sanity check: top-k cosine similarity timing.
+//
+// Usage:
+//   npx tsx scripts/ann_sanity.ts
+//
+// Reports whether the top-K query completes in <100ms.
 import "dotenv/config";
 import { getClient, annSearch } from "../src/db.js";
 
-/** A zero-ish vector for sanity; real queries use actual query embeddings. */
+// zero-ish vector for sanity; real queries use actual query embeddings
 function makeDummyVector(dim = 1536): number[] {
   return new Array(dim).fill(0.0).map(() => (Math.random() - 0.5) * 0.01);
 }

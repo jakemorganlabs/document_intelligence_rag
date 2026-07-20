@@ -1,8 +1,4 @@
-/**
- * PDF/Text extractor sidecar integration tests.
- *
- * Satisfies: FR-IG-1 (document ingestion), FR-IG-2 (page-tagging).
- */
+// PDF/Text extractor sidecar integration tests (FR-IG-1, FR-IG-2).
 import { describe, it, expect, beforeAll } from "vitest";
 import { extractFile } from "../src/pdf_extractor.js";
 import { resolve } from "node:path";
@@ -10,9 +6,9 @@ import { spawnSync } from "node:child_process";
 
 const FIXTURE_DIR = resolve(process.cwd(), "fixtures", "smoke_pdfs");
 
-// CI runners don't always have the Python sidecar's `pypdf` dependency
+// CI runners do not always have the Python sidecar's `pypdf` dependency
 // available. Rather than fail every PR, probe the sidecar once and skip
-// the live-extraction assertions when it can't run. The error-handling
+// the live-extraction assertions when it cannot run. The error-handling
 // test below still exercises the spawn path with no dependency.
 let sidecarAvailable = false;
 
@@ -25,7 +21,7 @@ beforeAll(() => {
   if (!sidecarAvailable) {
     // eslint-disable-next-line no-console
     console.warn(
-      "[pdf_extractor.test] pypdf not installed — skipping live extraction tests. " +
+      "[pdf_extractor.test] pypdf not installed - skipping live extraction tests. " +
       "Install with `pip install -r sidecar/requirements.txt` to enable them."
     );
   }

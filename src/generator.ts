@@ -1,16 +1,14 @@
-/**
- * Generator — DeepInfra adapter for Google Gemma (§10.8, FR-AN-1..5).
- *
- * Calls google/gemma-4-26B-A4B-it via DeepInfra's OpenAI-compatible
- * completions endpoint (https://api.deepinfra.com/v1/openai).
- * Uses response_format: { type: "json_object" } plus system-prompt
- * discipline to constrain output. Post-generation validation
- * (schema + citation gate) remains the correctness guarantee.
- *
- * No Anthropic, Claude, or Haiku models are used anywhere in this system.
- *
- * Repair loop: exactly one corrective re-call on schema or citation failure.
- */
+// Generator: DeepInfra adapter for Google Gemma (§10.8, FR-AN-1..5).
+//
+// Calls google/gemma-4-26B-A4B-it via DeepInfra's OpenAI-compatible completions
+// endpoint (https://api.deepinfra.com/v1/openai). Uses
+// response_format: { type: "json_object" } plus system-prompt discipline to
+// constrain output. Post-generation validation (schema + citation gate) is
+// the correctness guarantee.
+//
+// No Anthropic, Claude, or Haiku models anywhere in this system.
+//
+// Repair loop: exactly one corrective re-call on schema or citation failure.
 import generationConfig from "../config/generation.json" with { type: "json" };
 import type { GroundedAnswer } from "../types/index.js";
 
@@ -30,7 +28,7 @@ export interface GenerateResult {
   latencyMs: number;
 }
 
-/* ---------- System prompt that constrains Gemma to valid JSON ---------- */
+// System prompt: constrains Gemma to valid JSON.
 const JSON_SYSTEM_PROMPT = `You are a grounded question-answering assistant. Respond ONLY with a single JSON object matching this exact schema:
 {
   "status": "answered" | "insufficient_evidence",
@@ -44,7 +42,7 @@ Rules:
 - Every citation snippet must be verbatim from the passages.
 - Do not wrap the output in markdown fences.`;
 
-/* ---------- DeepInfra client ---------- */
+// DeepInfra client.
 
 function getApiKey(): string {
   const key = process.env.DEEPINFRA_API_KEY ?? process.env.GOOGLE_GENAI_API_KEY ?? "";
@@ -58,7 +56,7 @@ function getBaseUrl(): string {
   return process.env.DEEPINFRA_BASE_URL ?? "https://api.deepinfra.com/v1/openai";
 }
 
-/* ---------- Utilities ---------- */
+// utilities
 
 function stripMarkdownFences(text: string): string {
   const cleaned = text
@@ -73,7 +71,7 @@ function stripMarkdownFences(text: string): string {
   return cleaned.slice(firstBrace, lastBrace + 1);
 }
 
-/* ---------- Generation ---------- */
+// generation
 
 export async function generateGroundedAnswer(
   opts: GenerateOptions
@@ -146,7 +144,7 @@ export async function generateGroundedAnswer(
   };
 }
 
-/* ---------- Repair ---------- */
+// repair
 
 export async function generateRepair(
   opts: GenerateOptions & {

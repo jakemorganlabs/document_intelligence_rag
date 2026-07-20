@@ -1,13 +1,13 @@
 #
-# Production Docker Compose — MICT-RAG-002 S06
+# Production Docker Compose: MICT-RAG-002 S06
 #
 # Stack: n8n + pgvector/pgvector:pg16 + Python extractor sidecar + cloudflared
 #
-# §7 UID/GID Pitfall:
+# §7 UID/GID pitfall:
 #   The operator drops PDFs into the host corpus/ directory. Both n8n and the
 #   sidecar containers must be able to read them. If the container user UID/GID
 #   does not match the host directory permissions, ingest silently skips files.
-#   Fix: add `user: "<host_uid>:<host_gid>"` to n8n and sidecar services, or
+#   Fix: add `user: "<host_uid>:<host_gid>"` to n8n and sidecar, or
 #   `chmod -R a+r corpus/` on the host before starting.
 #
 # No public ports on Postgres or the sidecar. n8n loopback-only.
@@ -15,9 +15,9 @@
 #
 
 services:
-  # --- Postgres + pgvector (persistent corpus vectors) ---
+  # Postgres + pgvector (persistent corpus vectors)
   postgres:
-    image: pgvector/pgvector:pg16          # pinned — bump deliberately
+    image: pgvector/pgvector:pg16          # pinned, bump deliberately
     container_name: docintel-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -33,12 +33,12 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- n8n (workflow orchestration + webhook endpoints) ---
+  # n8n (workflow orchestration + webhook endpoints)
   n8n:
-    image: n8nio/n8n:1.82.0               # pinned — bump deliberately
+    image: n8nio/n8n:1.82.0               # pinned, bump deliberately
     container_name: docintel-n8n
     environment:
-      # Database
+      # database
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres
       DB_POSTGRESDB_PORT: 5432
@@ -49,7 +49,7 @@ services:
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       N8N_BASIC_AUTH_ACTIVE: "false"
       N8N_WEBHOOK_URL: ${WEBHOOK_URL}
-      # Application env vars passed through
+      # application env passed through
       DATABASE_URL: ${DATABASE_URL}
       EMBEDDING_PROVIDER_API_KEY: ${EMBEDDING_PROVIDER_API_KEY}
       HMAC_SECRET: ${HMAC_SECRET}
@@ -71,7 +71,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- Python extractor sidecar ---
+  # Python extractor sidecar
   extractor:
     build:
       context: ../sidecar
@@ -90,9 +90,9 @@ services:
       timeout: 5s
       retries: 3
 
-  # --- Cloudflare Tunnel (ingress only) ---
+  # Cloudflare Tunnel (ingress only)
   cloudflared:
-    image: cloudflare/cloudflared:2025.2.0  # pinned — bump deliberately
+    image: cloudflare/cloudflared:2025.2.0  # pinned, bump deliberately
     container_name: docintel-tunnel
     command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
     restart: unless-stopped
