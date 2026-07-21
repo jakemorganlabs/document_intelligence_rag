@@ -173,8 +173,9 @@ FIELD-005 reuses this piece directly. Its knowledge layer and eval-gate discipli
 
 ## Author
 
-**Jake Morgan** - [jakemorganlabs](__OPERATOR_PORTFOLIO_URL__)
-LinkedIn: [__OPERATOR__](__OPERATOR_LINKEDIN__)
-Contact: [__OPERATOR_EMAIL__](mailto:__OPERATOR_EMAIL__)
+**Jake Morgan**
+Portfolio: [jakemorganlabs.dev](https://jakemorganlabs.dev)
+LinkedIn: [linkedin.com/in/jakemorganlabs](https://www.linkedin.com/in/jakemorganlabs)
+Contact: [jakemorganlabs@gmail.com](mailto:jakemorganlabs@gmail.com)
 
 MICT-RAG-002 v1.0. Grounded RAG with citation verification and an abstention gate. Eval-gated, HMAC-authed, tunnel-only deploy.
