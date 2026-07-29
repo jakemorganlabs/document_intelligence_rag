@@ -110,7 +110,7 @@ export function buildServer() {
 
 export function startServer(port = PORT) {
   const server = buildServer();
-  server.listen(port, () => {
+  server.listen(port, "127.0.0.1", () => {
     console.log(`Server listening on http://localhost:${port}`);
     console.log(`  POST /query  (HMAC required in production)`);
     console.log(`  GET  /health (no-auth DB connectivity probe)`);

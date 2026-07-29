@@ -42,7 +42,10 @@ function sleep(ms: number): Promise<void> {
 }
 
 function buildClient(apiKey: string): OpenAI {
-  return new OpenAI({ apiKey });
+  return new OpenAI({
+    apiKey,
+    baseURL: process.env.EMBEDDING_BASE_URL || undefined,
+  });
 }
 
 // Embed a batch of text strings. Returns succeeded embeddings and any texts
@@ -71,6 +74,7 @@ export async function embedTexts(
           model: cfg.model,
           input: batch,
           encoding_format: "float",
+          dimensions: Number(process.env.EMBEDDING_DIMENSIONS) || 1536,
         });
 
         succeeded.push(

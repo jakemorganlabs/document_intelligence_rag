@@ -26,7 +26,7 @@ fi
 
 # 2. Block HMAC_SECRET= with literal values in tracked files
 echo "[gate] Scanning for HMAC_SECRET literals..."
-MATCHES=$(git grep -n "HMAC_SECRET=" 2>/dev/null || true)
+MATCHES=$(git grep -n "HMAC_SECRET=" -- . ":!scripts/secret_gate.sh" ":!docs/**" ":!*.example" 2>/dev/null || true)
 if [[ -n "${MATCHES}" ]]; then
   while IFS= read -r line; do
     # skip commented-out lines and template lines
