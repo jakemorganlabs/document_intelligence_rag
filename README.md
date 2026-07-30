@@ -63,7 +63,7 @@ graph LR
     C --> D[Embedder Qwen3-Embedding-4B via DeepInfra, 1536-dim]
     D --> E[(pgvector HNSW)]
     P[User query] --> F{Cloudflare Tunnel}
-    F --> G[/query]
+    F --> G["/query"]
     G --> H[Retriever ANN]
     H --> E
     H --> I{Relevance Floor >= 0.65}
