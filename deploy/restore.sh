@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Steps:
 #   1. find newest backup dump
-#   2. spin scratch pgvector/pgvector:pg16
+#   2. spin scratch pgvector/pgvector:pg18
 #   3. pg_restore the dump
 #   4. run ANN sanity query: ORDER BY embedding <=> $1 LIMIT 3
 #   5. assert rows returned -> PASS/FAIL
@@ -32,14 +32,14 @@ DEFAULT_DB_USER="${POSTGRES_USER:-postgres}"
 DEFAULT_DB_NAME="${POSTGRES_DB:-docintel}"
 
 docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
-echo "[restore] Starting scratch pgvector/pgvector:pg16..."
+echo "[restore] Starting scratch pgvector/pgvector:pg18..."
 docker run -d \
   --name "$CONTAINER_NAME" \
   -e POSTGRES_PASSWORD=restore_test \
   -e POSTGRES_USER="$DEFAULT_DB_USER" \
   -e POSTGRES_DB="$DEFAULT_DB_NAME" \
   -p 15432:5432 \
-  pgvector/pgvector:pg16 \
+  pgvector/pgvector:pg18 \
   >/dev/null
 
 # Wait for Postgres to accept connections
