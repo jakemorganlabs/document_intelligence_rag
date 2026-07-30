@@ -13,7 +13,7 @@ import { computeAbstentionCorrectness } from "./metrics/abstention.js";
 import { computeCitationIntegrity } from "./metrics/citations.js";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = resolve(fileURLToPath(import.meta.url), "..");
 
@@ -297,7 +297,7 @@ async function main() {
   process.exit(passed ? 0 : 1);
 }
 
-if (import.meta.url === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     console.error("[eval] Report generation failed:", err);
     process.exit(1);

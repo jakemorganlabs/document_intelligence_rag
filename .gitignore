@@ -15,3 +15,5 @@ corpus/*
 !corpus/.gitkeep
 *.pem
 *.key
+evals/results.json
+evals/results_prod.json

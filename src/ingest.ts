@@ -136,10 +136,11 @@ export async function ingestFile(
   // step 4: chunk
   logEvent({ trace_id: traceId, stage: "ingest_chunk", status: "start" });
   const namespacePrefix = options.namespace ? `${options.namespace}_` : "";
+  const storedSource = `${namespacePrefix}${extraction.source}`;
   const chunkInput: ChunkInput = {
     source: extraction.source,
     contentHash,
-    documentId: idem.documentId ?? `${namespacePrefix}${crypto.randomUUID()}`,
+    documentId: idem.documentId ?? crypto.randomUUID(),
     pages: extraction.pages.map((p) => ({
       page: p.page,
       text: p.text,
@@ -209,10 +210,10 @@ export async function ingestFile(
 
   try {
     if (idem.action === "skip" && options.replaceOnReingest) {
-      const res = await replaceDocument(idem.documentId!, { source: extraction.source, contentHash, pageCount: extraction.page_count, chunks: chunkRecords }, client);
+      const res = await replaceDocument(idem.documentId!, { source: storedSource, contentHash, pageCount: extraction.page_count, chunks: chunkRecords }, client);
       documentId = res.documentId;
     } else {
-      const res = await persistIngest({ source: extraction.source, contentHash, pageCount: extraction.page_count, chunks: chunkRecords }, client);
+      const res = await persistIngest({ source: storedSource, contentHash, pageCount: extraction.page_count, chunks: chunkRecords }, client);
       documentId = res.documentId;
     }
   } catch (err) {

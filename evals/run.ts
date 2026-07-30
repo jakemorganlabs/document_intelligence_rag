@@ -13,7 +13,7 @@
 import "dotenv/config";
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { Client, type PoolClient } from "pg";
 import { getClient } from "../src/db.js";
 import { ingestFile } from "../src/ingest.js";
@@ -269,12 +269,12 @@ async function main() {
     console.log("[eval] Verifying corpus non-contamination...");
     const client = await getClient();
     const nonEval = await client.query(
-      `SELECT document_id FROM documents WHERE document_id NOT LIKE 'eval_%' LIMIT 1`
+      `SELECT source FROM documents WHERE source NOT LIKE 'eval_%' LIMIT 1`
     );
     await client.release();
     if (nonEval.rows.length > 0) {
       console.error(
-        `[eval] FAIL: Non-eval document found in DB: ${nonEval.rows[0]!.document_id}`
+        `[eval] FAIL: Non-eval document found in DB: ${nonEval.rows[0]!.source}`
       );
       process.exit(1);
     }
@@ -300,7 +300,7 @@ async function main() {
   console.log(`[eval] Raw results written to ${resultsPath}`);
 }
 
-if (import.meta.url === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     console.error("[eval] Fatal error:", err);
     process.exit(1);
