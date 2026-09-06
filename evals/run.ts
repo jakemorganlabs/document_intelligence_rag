@@ -264,24 +264,8 @@ async function main() {
 
   const results = await runEvals();
 
-  // corruption check in prod mode: assert no non-eval_ documents
-  if (IS_PROD) {
-    console.log("[eval] Verifying corpus non-contamination...");
-    const client = await getClient();
-    const nonEval = await client.query(
-      `SELECT source FROM documents WHERE source NOT LIKE 'eval_%' LIMIT 1`
-    );
-    await client.release();
-    if (nonEval.rows.length > 0) {
-      console.error(
-        `[eval] FAIL: Non-eval document found in DB: ${nonEval.rows[0]!.source}`
-      );
-      process.exit(1);
-    }
-    console.log("[eval] Corpus non-contamination verified.");
-  }
-
-  // save raw results
+  // save raw results first: 75 live queries must never be discarded by a
+  // bookkeeping check that runs afterwards
   const resultsFile = IS_PROD ? "results_prod.json" : "results.json";
   const resultsPath = resolve(__dirname, resultsFile);
   const resultsJson = JSON.stringify(
@@ -298,6 +282,23 @@ async function main() {
   const { writeFile } = await import("node:fs/promises");
   await writeFile(resultsPath, resultsJson, "utf-8");
   console.log(`[eval] Raw results written to ${resultsPath}`);
+
+  // corruption check in prod mode: assert no non-eval_ documents
+  if (IS_PROD) {
+    console.log("[eval] Verifying corpus non-contamination...");
+    const client = await getClient();
+    const nonEval = await client.query(
+      `SELECT source FROM documents WHERE source NOT LIKE 'eval_%' LIMIT 1`
+    );
+    await client.release();
+    if (nonEval.rows.length > 0) {
+      console.error(
+        `[eval] FAIL: Non-eval document found in DB: ${nonEval.rows[0]!.source}`
+      );
+      process.exit(1);
+    }
+    console.log("[eval] Corpus non-contamination verified.");
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
