@@ -16,11 +16,27 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
-BACKUP_DIR="/var/backups/pgvector"
-DUMP_FILE=$(find "$BACKUP_DIR" -name "rag_*.dump" -type f -print0 | xargs -0 ls -t | head -n 1)
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/pgvector}"
+
+# Newest rag_*.dump by mtime. find prints "<epoch> <path>" so an empty match
+# yields an empty string instead of falling through to `ls` on the cwd (which
+# once handed README.md to pg_restore).
+DUMP_FILE=$(find "$BACKUP_DIR" -maxdepth 1 -name "rag_*.dump" -type f -printf '%T@ %p\n' 2>/dev/null \
+  | sort -rn | head -n 1 | cut -d' ' -f2-)
 
 if [[ -z "$DUMP_FILE" ]]; then
-  echo -e "${RED}FAIL: No backup dump found in $BACKUP_DIR${NC}"
+  echo -e "${RED}FAIL: No rag_*.dump found in $BACKUP_DIR${NC}"
+  exit 1
+fi
+
+if [[ "$DUMP_FILE" != *.dump || ! -f "$DUMP_FILE" || ! -s "$DUMP_FILE" ]]; then
+  echo -e "${RED}FAIL: Newest match is not a non-empty .dump file: $DUMP_FILE${NC}"
+  exit 1
+fi
+
+# Must be a pg_dump custom-format archive, not an arbitrary file with the right name.
+if ! pg_restore --list "$DUMP_FILE" >/dev/null 2>&1; then
+  echo -e "${RED}FAIL: $DUMP_FILE is not a readable pg_dump custom-format archive${NC}"
   exit 1
 fi
 
