@@ -11,7 +11,7 @@ Sanitized production artifacts and eval results. All files are synthetic or reda
 | `smoke_prod_output.txt` | Closeout slot | Signed request -> 200 + citations, and unsigned -> 401 transcript |
 | `sample_grounded_answer.md` | Committed | Example Q->A with verified citations from eval corpus |
 | `sample_abstention.md` | Committed | Example question correctly refused by the abstention gate |
-| `restore_test.txt` | Closeout slot | ANN sanity query PASS transcript after pg_restore |
+| `restore_test.txt` | Committed | ANN sanity query PASS transcript after pg_restore of the nightly dump |
 
 ## How to populate closeout slots
 

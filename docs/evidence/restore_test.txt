@@ -1,11 +1,11 @@
-# Restore Test Transcript - Closeout Slot
+# Restore Test Transcript
 
-Placeholder. Populate after running `bash deploy/restore.sh`.
+Run: 2026-09-06T03:57:56+00:00 on the production host, newest nightly dump, scratch pgvector/pgvector:pg18 container.
+Command: bash deploy/restore.sh (scheduled weekly by deploy/cron/restore_test.sh)
 
-Expected contents:
 ```
-[restore] Using newest dump: /var/backups/pgvector/rag_YYYY-MM-DD.dump
-[restore] Starting scratch pgvector/pgvector:pg16...
+[restore] Using newest dump: /var/backups/pgvector/rag_2026-09-06.dump
+[restore] Starting scratch pgvector/pgvector:pg18...
 [restore] Restoring dump...
 [restore] Dump restored. Running ANN sanity query...
 [restore] PASS: ANN sanity returned 3 row(s). Vectors survived.
