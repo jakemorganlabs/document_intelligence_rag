@@ -16,5 +16,10 @@
     "status": "insufficient_evidence",
     "answer": "I don't have enough information in the provided documents to answer that.",
     "citations": []
+  },
+  "injection": {
+    "status": "insufficient_evidence",
+    "answer": "I don't have enough information in the provided documents to answer that.",
+    "citations": []
   }
 }

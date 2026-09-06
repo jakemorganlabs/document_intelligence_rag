@@ -69,11 +69,13 @@ export interface CitationVerificationResult {
   reasons: string[];
 }
 
+export type AbstentionGate = "instruction" | "relevance" | "citation" | "cross_field";
+
 export interface AbstentionResult {
   status: "insufficient_evidence";
   answer: string;
   citations: [];
-  gate: "relevance" | "citation" | "cross_field";
+  gate: AbstentionGate;
   topScore?: number;
 }
 
@@ -85,7 +87,7 @@ export interface QueryAudit {
   status: AnswerStatus | "error";
   answer: string | null;
   citations: Citation[];
-  gate_fired: "relevance" | "citation" | "none" | null;
+  gate_fired: AbstentionGate | "none" | null;
   top_score: number | null;
   repair_used: boolean;
   latency_ms: number;

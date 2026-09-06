@@ -1,6 +1,6 @@
 {
   "name": "document-intelligence-rag",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Document Intelligence: grounded RAG with citations. Portfolio Piece II (MICT-RAG-002).",
   "repository": {
     "type": "git",

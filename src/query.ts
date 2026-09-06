@@ -1,6 +1,7 @@
 // Query Pipeline: end-to-end query handler (§12.B).
 //
 // Flow:
+//  0. instruction screen (abstain if the query is an instruction, not a question)
 //  1. retrieve chunks (embed query + ANN search)
 //  2. pre-generation relevance gate (abstain if nothing >= floor)
 //  3. assemble prompt
@@ -14,6 +15,7 @@ import { retrieveChunks } from "./retriever.js";
 import {
   preGenerationGate,
   makeInsufficientEvidence,
+  screenInstructionOverride,
   validatePostGeneration,
 } from "./abstention.js";
 import { assemblePrompt } from "./context_assembler.js";
@@ -52,6 +54,33 @@ export async function queryDocument(
   const startTotal = performance.now();
   const ownClient = !opts.client;
   const client = opts.client ?? (await getClient());
+
+  // step 0: instruction screen. No embedding, no retrieval, no model call.
+  const screen = screenInstructionOverride(opts.question);
+  if (screen.override) {
+    const latency = Math.round(performance.now() - startTotal);
+    logEvent({ trace_id: traceId, stage: "instruction_screen", status: "abstain", gate_fired: "instruction", error: screen.reasons.join(",") });
+    const result = makeInsufficientEvidence();
+    const audit = await writeAudit(client, {
+      question: opts.question,
+      retrievedIds: [],
+      scores: {},
+      status: result.status,
+      answer: result.answer,
+      citations: result.citations,
+      modelId: null,
+      parameters: null,
+      gateFired: "instruction",
+      topScore: 0,
+      repairUsed: false,
+      latencyMs: latency,
+      inputTokens: 0,
+      outputTokens: 0,
+      rawOutput: null,
+    });
+    if (ownClient) client.release();
+    return { answer: result, audit, retrieved: [] };
+  }
 
   // step 1: retrieve (embed + ANN)
   logEvent({ trace_id: traceId, stage: "retrieve", status: "start", query_id: opts.question });
@@ -244,7 +273,7 @@ interface AuditWriteOpts {
   citations: GroundedAnswer["citations"];
   modelId: string | null;
   parameters: Record<string, unknown> | null;
-  gateFired: "relevance" | "citation" | "cross_field" | "none" | null;
+  gateFired: "instruction" | "relevance" | "citation" | "cross_field" | "none" | null;
   topScore: number;
   repairUsed: boolean;
   latencyMs: number;
