@@ -20,7 +20,7 @@
 ### Changes from Rev 1.1
 
 1. **§2, §3, §11.5, §15 — Instruction screen.** A deterministic gate now runs before retrieval. A query that is an instruction to the assistant (authority claim, override, demand for a fixed string or JSON object) with no evidence-seeking question abstains with `gate_fired = instruction`, spending no embedding or generation tokens. A query that carries both a real question and an embedded instruction proceeds; the prompt rules and the citation gate handle the embedded text. The prompt gains explicit override rules and a third few-shot example.
-2. **§18 — Evaluation.** The Rev 1.1 named limitation (three authority-override prompts answered, `false_answer_rate` 12.5%) is closed. On the 2026-09-06 clean run all 75 fixtures match their label and all four gates pass. Thresholds are unchanged.
+2. **§18 — Evaluation.** The Rev 1.1 named limitation (three authority-override prompts answered, `false_answer_rate` 12.5% local, 8.3% prod) is closed. On the 2026-09-06 runs, local and over the live tunnel, all 75 fixtures match their label and every gate passes. Thresholds are unchanged. The prod runner now writes results before its non-contamination check instead of discarding them.
 3. **§17 — Backups.** The restore test is scheduled weekly (`deploy/cron/restore_test.sh`) with dated logs and a rolling status file. `deploy/restore.sh` refuses to run unless the newest match is a readable `pg_dump` custom-format archive.
 4. **§8.3, §19 — Repository hygiene.** The compose files and cloudflared ingress config left over from the Rev 1.0 container design are deleted. The runbook and Makefile describe only the systemd deploy.
 
@@ -115,6 +115,8 @@ This document specifies and records the design of a small retrieval-augmented an
 | false_answer_rate | 0.0% | ≤ 10.0% | PASS |
 
 Local clean run, 2026-09-06: 42/42 answerable, 18/18 unanswerable, 15/15 adversarial. Report: `docs/evidence/eval_report_local.md`.
+
+Production run over the live tunnel, same day, same 75 fixtures against the deployed service: `false_answer_rate` 0.0%, `false_refusal_rate` 0.0%, 42/42 answerable, 18/18 unanswerable, 15/15 adversarial, zero transport errors, latency p50 2.5 s and p95 4.4 s end to end. Report: `docs/evidence/eval_report_prod.md`.
 
 **Closed limitation (Rev 1.1).** Rev 1.1 failed `false_answer_rate` at 12.5% on three adversarial prompts of the authority-override class. The poisoned corpus contains the same strings the prompts use, so retrieval returned them and a verbatim citation of the injected text passed the citation gate. Rev 1.2 adds the instruction screen (§2, §15) and the three prompts now abstain at `gate_fired = instruction` before retrieval. Thresholds were not changed. `recall` and `citation_integrity` remain local-mode metrics, because the public API does not return the internal retrieved set they score against.
 

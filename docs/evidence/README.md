@@ -7,7 +7,7 @@ Sanitized production artifacts and eval results. All files are synthetic or reda
 | File | Status | Description |
 |---|---|---|
 | `eval_report_local.md` | Committed | S04 local eval: recall@k, abstention correctness, citation integrity |
-| `eval_report_prod.md` | Closeout slot | Production eval results after `EVAL_ENV=prod` run |
+| `eval_report_prod.md` | Committed | Production eval over the live tunnel after `EVAL_ENV=prod` run |
 | `smoke_prod_output.txt` | Committed | Signed request -> 200 + citations, unsigned -> 401, health -> 200 transcript |
 | `sample_grounded_answer.md` | Committed | Example Q->A with verified citations from eval corpus |
 | `sample_abstention.md` | Committed | Example question correctly refused by the abstention gate |
