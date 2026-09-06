@@ -1,12 +1,15 @@
-# Smoke Test Output - Closeout Slot
+# Smoke Test Output
 
-Placeholder. Populate after running `scripts/smoke_prod.sh` against the deployed instance.
+Run: 2026-09-06T04:16:01+00:00 from the production host against the public tunnel, after deploying 712ae52 (instruction screen).
+Command: HMAC_SECRET=<from deploy/.env.production> bash scripts/smoke_prod.sh
 
-Run:
-```bash
-HMAC_SECRET="your-secret" bash scripts/smoke_prod.sh
 ```
-
-Expected contents:
-- Signed request -> 200 + `citations` array non-empty
-- Unsigned request -> 401
+[smoke] Target: https://docs.jakemorganlabs.dev/query
+[smoke] Firing signed request...
+[smoke] PASS signed: 200 + 1 citation(s)
+[smoke] Firing unsigned request...
+[smoke] PASS unsigned: rejected with 401
+[smoke] Firing health check...
+[smoke] PASS health: 200
+[smoke] ALL PASSED
+```

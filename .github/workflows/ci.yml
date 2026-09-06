@@ -82,5 +82,5 @@ jobs:
           # When the real secret is absent, fall back to the placeholder-skipped
           # sentinel. The test suite recognises this sentinel and skips live
           # API tests hermetically rather than timing out against the network.
-          DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY || 'placeholder-skipped' }}
+          DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY || secrets.GOOGLE_GENAI_API_KEY || 'placeholder-skipped' }}
           EMBEDDING_PROVIDER_API_KEY: ${{ secrets.EMBEDDING_PROVIDER_API_KEY || 'placeholder-skipped' }}
