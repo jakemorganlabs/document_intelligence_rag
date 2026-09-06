@@ -1,7 +1,7 @@
-# Makefile: MICT-RAG-002 S06 deployment commands.
+# Makefile: MICT-RAG-002 operations commands.
 # Usage: make <target>
 
-.PHONY: hooks gate up down logs migrate backup restore-test reingest smoke eval-prod
+.PHONY: hooks gate status logs restart migrate backup restore-test reingest smoke eval-prod
 
 # Install git hooks (run once per clone)
 hooks:
@@ -12,16 +12,16 @@ hooks:
 gate:
 	bash scripts/secret_gate.sh
 
-# local development
+# production service (systemd unit docintel-rag, host Postgres)
 
-up:
-	docker compose up -d
-
-down:
-	docker compose down
+status:
+	systemctl status docintel-rag --no-pager
 
 logs:
-	docker compose logs -f
+	journalctl -u docintel-rag -f
+
+restart:
+	sudo systemctl restart docintel-rag && curl -sf http://127.0.0.1:3002/health
 
 # database
 
