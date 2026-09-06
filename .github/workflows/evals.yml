@@ -10,13 +10,13 @@ jobs:
   eval:
     runs-on: ubuntu-latest
 
-    # Required secrets (see ci.yml):
-    # - GOOGLE_GENAI_API_KEY
-    # - EMBEDDING_PROVIDER_API_KEY
+    # Required secrets:
+    # - DEEPINFRA_API_KEY          (generation: Gemma via DeepInfra)
+    # - EMBEDDING_PROVIDER_API_KEY (embeddings: Qwen3-Embedding-4B via DeepInfra)
 
     services:
       postgres:
-        image: pgvector/pgvector:pg16
+        image: pgvector/pgvector:pg18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -65,7 +65,7 @@ jobs:
           npm run eval:clean
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/docintel_eval
-          GOOGLE_GENAI_API_KEY: ${{ secrets.GOOGLE_GENAI_API_KEY }}
+          DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY }}
           EMBEDDING_PROVIDER_API_KEY: ${{ secrets.EMBEDDING_PROVIDER_API_KEY }}
         continue-on-error: true
 

@@ -28,11 +28,27 @@ jobs:
   test:
     runs-on: ubuntu-latest
     # Surface a single coherent test check rather than overlapping with build.
-    # Required repository secrets (Settings > Secrets and variables > Actions):
-    #   - GOOGLE_GENAI_API_KEY      (Google AI Studio key for Gemma generation)
-    #   - EMBEDDING_PROVIDER_API_KEY (OpenAI key for text-embedding-3-small)
-    #   - DATABASE_URL              (Postgres+pgvector connection string, optional for CI)
-    #   - QUERY_SECRET              (HMAC secret for query auth, S05)
+    # Optional repository secrets (Settings > Secrets and variables > Actions):
+    #   - DEEPINFRA_API_KEY         (DeepInfra key; enables the live embedder test)
+    #   - EMBEDDING_PROVIDER_API_KEY (same key under the embedder's env name)
+    # DATABASE_URL is not a secret here: the job runs its own pgvector service
+    # so the migrations and every DB-touching test execute on every push.
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: docintel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -54,11 +70,17 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Run unit tests (no live APIs)
+      - name: Run migrations against the CI database
+        run: npm run migrate:fresh
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/docintel_test
+
+      - name: Run unit tests
         run: npm test
         env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/docintel_test
           # When the real secret is absent, fall back to the placeholder-skipped
           # sentinel. The test suite recognises this sentinel and skips live
           # API tests hermetically rather than timing out against the network.
-          GOOGLE_GENAI_API_KEY: ${{ secrets.GOOGLE_GENAI_API_KEY || 'placeholder-skipped' }}
+          DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY || 'placeholder-skipped' }}
           EMBEDDING_PROVIDER_API_KEY: ${{ secrets.EMBEDDING_PROVIDER_API_KEY || 'placeholder-skipped' }}
